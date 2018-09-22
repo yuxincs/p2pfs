@@ -1,104 +1,51 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Compiled python files
+*.pyc
 
-# C extensions
-*.so
+# macOS generated files
+.DS_STORE
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
+# Temporary and log files
+*.tmp
 *.log
-local_settings.py
-db.sqlite3
 
-# Flask stuff:
-instance/
-.webassets-cache
+# Coverage generated files
+.coverage
 
-# Scrapy stuff:
-.scrapy
+# Ply generated files
+parser.out
+parsetab.py
 
-# Sphinx documentation
-docs/_build/
+# JetBrains generated files
+.idea/
 
-# PyBuilder
-target/
+# Build files
+.cache/
+build/
+dist/
+*.egg-info/
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Tox generated files
+.tox/
 
-# pyenv
-.python-version
+# Python cache
+_pycache_/
 
-# celery beat schedule file
-celerybeat-schedule
+# Z3 library release files
+z3/
 
-# SageMath parsed files
-*.sage.py
+# Output figure
+*.pdf
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# Test run file
+run.py
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Result data file
+result_*.json
+debug.txt
+runo.py
 
-# Rope project settings
-.ropeproject
+# Coverage reports
+.coverage.*
 
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
+# pytest cache
+.pytest_cache
