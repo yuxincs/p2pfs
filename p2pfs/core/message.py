@@ -1,25 +1,24 @@
-from enum import Enum, auto
 import socket
 
-
-class MessageType(Enum):
+MessageType = {
     # peer -> server
-    REQUEST_REGISTER = auto()
-    REQUEST_FILE_LIST = auto()
-    REQUEST_FILE_LOCATION = auto()
-    REQUEST_CHUNK_REGISTER = auto()
-    REQUEST_LEAVE = auto()
+    'REQUEST_REGISTER': 1,
+    'REQUEST_FILE_LIST': 2,
+    'REQUEST_FILE_LOCATION': 3,
+    'REQUEST_CHUNK_REGISTER': 4,
+    'REQUEST_LEAVE': 5,
 
     # server -> peer
-    REPLY_REGISTER = auto()
-    REPLY_FILE_LIST = auto()
-    REPLY_FILE_LOCATION = auto()
-    REPLY_CHUNK_REGISTER = auto()
-    REPLY_LEAVE = auto()
+    'REPLY_REGISTER': 6,
+    'REPLY_FILE_LIST': 7,
+    'REPLY_FILE_LOCATION': 8,
+    'REPLY_CHUNK_REGISTER': 9,
+    'REPLY_LEAVE': 10,
 
     # peer <-> peer
-    PEER_REQUEST_CHUNK = auto()
-    PEER_REPLY_CHUNK = auto()
+    'PEER_REQUEST_CHUNK': 11,
+    'PEER_REPLY_CHUNK': 12
+}
 
 
 def write_message(s, message):
