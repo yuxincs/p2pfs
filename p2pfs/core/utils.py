@@ -13,8 +13,8 @@ class MessageServer:
     def listen(self):
         self._sock.listen(5)
         while True:
-            client, address = self._sock.accept()
-            self._client_connected(client, address)
+            client, _ = self._sock.accept()
+            self._client_connected(client)
             threading.Thread(target=self._read_message, args=(client,)).start()
 
     @staticmethod
