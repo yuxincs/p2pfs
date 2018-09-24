@@ -35,7 +35,7 @@ class MessageServer:
                 raw_msg_len = self._recvall(client, 4)
                 msglen = struct.unpack('>I', raw_msg_len)[0]
                 raw_msg = self._recvall(client, msglen)
-                self._process_message(json.loads(raw_msg.decode('utf-8')))
+                self._process_message(client, json.loads(raw_msg.decode('utf-8')))
         except EOFError:
             self._client_closed(client)
 
