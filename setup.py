@@ -27,7 +27,7 @@ setup(
     ],
     keywords='P2P, Networking',
     packages=find_packages(exclude=['tests']),
-    install_requires=['pybase64'],
+    install_requires=['pybase64', 'coloredlogs'],
     entry_points={
         'console_scripts': [
             'p2pfs=p2pfs.__main__:main',
