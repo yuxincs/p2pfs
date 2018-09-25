@@ -7,9 +7,8 @@ class CentralServer(MessageServer):
         super().__init__(host, port)
         self._peers = {}
 
-    def _client_connected(self, client, address):
+    def _client_connected(self, client):
         assert isinstance(client, socket.socket)
-        print('{} connected!'.format(address))
 
     def _process_message(self, client, message):
         assert isinstance(client, socket.socket)

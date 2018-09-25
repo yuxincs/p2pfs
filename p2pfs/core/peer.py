@@ -13,11 +13,10 @@ class PeerServer(MessageServer):
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
-        logger.info('{} connected!'.format(client.getpeername()))
         self._peers[client.getpeername()] = client
 
     def _process_message(self, client, message):
         print(message)
 
     def _client_closed(self, client):
-        logger.info('{} closed!'.format())
+        assert isinstance(client, socket.socket)
