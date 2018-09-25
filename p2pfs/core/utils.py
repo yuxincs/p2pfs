@@ -19,10 +19,10 @@ class MessageServer:
         logger.info('Start listening on {}'.format(self._sock.getsockname()))
         while True:
             client, address = self._sock.accept()
+            logger.info('New connection from {}'.format(address))
             self._connection_lock.acquire()
             self._client_connected(client)
             self._connection_lock.release()
-            logger.info('New connection from {}'.format(address))
             threading.Thread(target=self._read_message, args=(client,)).start()
 
     @staticmethod
