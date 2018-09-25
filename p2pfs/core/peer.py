@@ -24,4 +24,5 @@ class PeerServer(MessageServer):
 
     def _client_closed(self, client):
         assert isinstance(client, socket.socket)
+        del self._peers[client.getpeername()]
         logger.debug(self._peers.keys())
