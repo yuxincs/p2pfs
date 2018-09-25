@@ -1,5 +1,7 @@
 from p2pfs.core.utils import MessageServer
 import socket
+import logging
+logger = logging.getLogger(__name__)
 
 
 class CentralServer(MessageServer):
@@ -9,6 +11,7 @@ class CentralServer(MessageServer):
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
+        logger.debug(self._peers.keys())
 
     def _process_message(self, client, message):
         assert isinstance(client, socket.socket)
@@ -16,3 +19,4 @@ class CentralServer(MessageServer):
 
     def _client_closed(self, client):
         pass
+        logger.debug(self._peers.keys())
