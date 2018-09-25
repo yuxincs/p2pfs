@@ -3,6 +3,8 @@ import socket
 from abc import abstractmethod
 import json
 import struct
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MessageServer:
@@ -12,9 +14,11 @@ class MessageServer:
 
     def listen(self):
         self._sock.listen(5)
+        logger.info('Start listening on {}'.format(self._sock.getsockname()))
         while True:
-            client, _ = self._sock.accept()
+            client, address = self._sock.accept()
             self._client_connected(client)
+            logger.info('New connection from {}'.format(address))
             threading.Thread(target=self._read_message, args=(client,)).start()
 
     @staticmethod
@@ -35,12 +39,16 @@ class MessageServer:
                 raw_msg_len = self._recvall(client, 4)
                 msglen = struct.unpack('>I', raw_msg_len)[0]
                 raw_msg = self._recvall(client, msglen)
-                self._process_message(client, json.loads(raw_msg.decode('utf-8')))
+                msg = json.loads(raw_msg.decode('utf-8'))
+                logger.info('Message {} from {}'.format(msg, client.getpeername()))
+                self._process_message(client, msg)
         except EOFError:
+            logger.warning('{} closed unexpectedly'.format(client.getpeername()))
             self._client_closed(client)
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
+        logging.info('Writing {} to {}'.format(message, client.getpeername()))
         raw_msg = json.dumps(message).encode('utf-8')
         raw_msg = struct.pack('>I', len(raw_msg)) + raw_msg
         client.sendall(raw_msg)
