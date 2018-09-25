@@ -65,7 +65,7 @@ class MessageServer:
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
-        logging.info('Writing {} to {}'.format(message, client.getpeername()))
+        logging.debug('Writing {} to {}'.format(message, client.getpeername()))
         raw_msg = json.dumps(message).encode('utf-8')
         raw_msg = struct.pack('>I', len(raw_msg)) + raw_msg
         client.sendall(raw_msg)
