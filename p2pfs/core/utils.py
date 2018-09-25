@@ -14,7 +14,12 @@ class MessageServer:
         self._process_lock = threading.Lock()
         self._connection_lock = threading.Lock()
 
-    def listen(self):
+    def start(self):
+        # put server listening into a thread
+        threading.Thread(target=self._listen).start()
+        self._server_started()
+
+    def _listen(self):
         self._sock.listen(5)
         logger.info('Start listening on {}'.format(self._sock.getsockname()))
         while True:
@@ -70,7 +75,9 @@ class MessageServer:
         raw_msg = struct.pack('>I', len(raw_msg)) + raw_msg
         client.sendall(raw_msg)
 
-    @abstractmethod
+    def _server_started(self):
+        pass
+
     def _client_connected(self, client):
         pass
 
@@ -78,7 +85,6 @@ class MessageServer:
     def _process_message(self, client, message):
         pass
 
-    @abstractmethod
     def _client_closed(self, client):
         pass
 
