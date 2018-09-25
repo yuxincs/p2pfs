@@ -26,7 +26,7 @@ class MessageServer:
             threading.Thread(target=self._read_message, args=(client,)).start()
 
     @staticmethod
-    def _recvall(sock, n):
+    def __recvall(sock, n):
         """helper function to recv n bytes or return None if EOF is hit"""
         data = b''
         while len(data) < n:
@@ -40,9 +40,9 @@ class MessageServer:
         assert isinstance(client, socket.socket)
         try:
             while True:
-                raw_msg_len = self._recvall(client, 4)
+                raw_msg_len = self.__recvall(client, 4)
                 msglen = struct.unpack('>I', raw_msg_len)[0]
-                raw_msg = self._recvall(client, msglen)
+                raw_msg = self.__recvall(client, msglen)
                 msg = json.loads(raw_msg.decode('utf-8'))
                 logger.info('Message {} from {}'.format(msg, client.getpeername()))
                 # process the packets in order
