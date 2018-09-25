@@ -36,6 +36,14 @@ class MessageServer:
             data += packet
         return data
 
+    def _connect(self, ip, port):
+        logger.info('Connecting to {}'.format((ip, port)))
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((ip, port))
+        threading.Thread(target=self._read_message, args=(client,)).start()
+        logger.info('Successfully connected to {} on {}'.format((ip, port), client.getsockname()))
+        return client
+
     def _read_message(self, client):
         assert isinstance(client, socket.socket)
         try:
