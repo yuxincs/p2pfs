@@ -1,4 +1,5 @@
 from p2pfs.core.utils import MessageServer
+from p2pfs.core.message import MessageType
 import socket
 import logging
 logger = logging.getLogger(__name__)
@@ -10,6 +11,11 @@ class PeerServer(MessageServer):
         self._peers = {}
         try:
             self._server_sock = self._connect(server, server_port)
+            logger.info('Requesting to register')
+            self._write_message(self._server_sock, {
+                'type': MessageType.REQUEST_REGISTER,
+                'address': (host, port)
+            })
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             exit(1)
@@ -20,7 +26,17 @@ class PeerServer(MessageServer):
         logger.debug(self._peers.keys())
 
     def _process_message(self, client, message):
-        print(message)
+        if message['type'] == MessageType.REPLY_REGISTER:
+            logger.info('Successfully registered with id {}'.format(message['id']))
+            for (id, (ip, port)) in message['peer_list']:
+                client = self._connect(ip, port)
+                self._peers[client] = id
+                self._write_message(client, {
+                    'type': MessageType.PEER_GREET,
+                    'id': message['id']
+                })
+
+        logger.debug(self._peers.values())
 
     def _client_closed(self, client):
         assert isinstance(client, socket.socket)
