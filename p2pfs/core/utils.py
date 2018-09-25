@@ -52,7 +52,7 @@ class MessageServer:
                 msglen = struct.unpack('>I', raw_msg_len)[0]
                 raw_msg = self.__recvall(client, msglen)
                 msg = json.loads(raw_msg.decode('utf-8'))
-                logger.info('Message {} from {}'.format(msg, client.getpeername()))
+                logger.debug('Message {} from {}'.format(msg, client.getpeername()))
                 # process the packets in order
                 self._process_lock.acquire()
                 self._process_message(client, msg)
