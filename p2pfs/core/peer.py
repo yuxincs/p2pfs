@@ -9,7 +9,12 @@ class PeerServer(MessageServer):
         super().__init__(host, port)
         self._peers = {}
         self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_sock.connect((server, server_port))
+        try:
+            self._server_sock.connect((server, server_port))
+            logger.info('Successfully connected to server on {}'.format(self._server_sock.getsockname()))
+        except ConnectionRefusedError as e:
+            logger.error('Server connection refused!')
+            exit(1)
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
