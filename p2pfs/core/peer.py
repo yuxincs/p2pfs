@@ -35,6 +35,10 @@ class PeerServer(MessageServer):
                     'type': MessageType.PEER_GREET,
                     'id': message['id']
                 })
+        elif message['type'] == MessageType.PEER_GREET:
+            logger.info('Greetings from peer with id {}'.format(message['id']))
+            assert client in self._peers
+            self._peers[client] = message['id']
 
         logger.debug(self._peers.values())
 
