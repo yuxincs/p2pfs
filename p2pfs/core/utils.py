@@ -11,13 +11,17 @@ class MessageServer:
     def __init__(self, host, port):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind((host, port))
+        self._process_lock = threading.Lock()
+        self._connection_lock = threading.Lock()
 
     def listen(self):
         self._sock.listen(5)
         logger.info('Start listening on {}'.format(self._sock.getsockname()))
         while True:
             client, address = self._sock.accept()
+            self._connection_lock.acquire()
             self._client_connected(client)
+            self._connection_lock.release()
             logger.info('New connection from {}'.format(address))
             threading.Thread(target=self._read_message, args=(client,)).start()
 
@@ -41,10 +45,15 @@ class MessageServer:
                 raw_msg = self._recvall(client, msglen)
                 msg = json.loads(raw_msg.decode('utf-8'))
                 logger.info('Message {} from {}'.format(msg, client.getpeername()))
+                # process the packets in order
+                self._process_lock.acquire()
                 self._process_message(client, msg)
+                self._process_lock.release()
         except EOFError:
             logger.warning('{} closed unexpectedly'.format(client.getpeername()))
+            self._connection_lock.acquire()
             self._client_closed(client)
+            self._connection_lock.release()
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
