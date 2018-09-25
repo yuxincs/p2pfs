@@ -46,7 +46,7 @@ class MessageServer:
         client.sendall(raw_msg)
 
     @abstractmethod
-    def _client_connected(self, client, address):
+    def _client_connected(self, client):
         pass
 
     @abstractmethod
