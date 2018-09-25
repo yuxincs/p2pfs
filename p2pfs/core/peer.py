@@ -11,14 +11,16 @@ class PeerServer(MessageServer):
         self._peers = {}
         try:
             self._server_sock = self._connect(server, server_port)
-            logger.info('Requesting to register')
-            self._write_message(self._server_sock, {
-                'type': MessageType.REQUEST_REGISTER,
-                'address': (host, port)
-            })
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             exit(1)
+
+    def _server_started(self):
+        logger.info('Requesting to register')
+        self._write_message(self._server_sock, {
+            'type': MessageType.REQUEST_REGISTER,
+            'address': self._sock.getsockname()
+        })
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
