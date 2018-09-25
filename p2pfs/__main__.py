@@ -18,10 +18,10 @@ def main():
 
     if results.option[0] == 'server':
         server = CentralServer(results.host, results.host_port)
-        server.listen()
+        server.start()
     elif results.option[0] == 'peer':
         peer = PeerServer(results.host, results.host_port, results.server, results.server_port)
-        peer.listen()
+        peer.start()
     else:
         logging.error('Option must either be \'server\' or \'peer\'')
 
