@@ -22,8 +22,8 @@ class PeerServer(MessageServer):
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
-        self._peers[client.getpeername()] = client
-        logger.debug(self._peers.keys())
+        self._peers[client] = None
+        logger.debug(self._peers.values())
 
     def _process_message(self, client, message):
         if message['type'] == MessageType.REPLY_REGISTER:
