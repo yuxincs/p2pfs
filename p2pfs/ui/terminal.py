@@ -18,10 +18,6 @@ class TrackerTerminal(cmd.Cmd):
     def do_list_peers(self, arg):
         print(self._tracker.peers())
 
-    def do_download(self, arg):
-        # TODO: implement download function
-        pass
-
 
 class PeerTerminal(cmd.Cmd):
     intro = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
@@ -39,3 +35,7 @@ class PeerTerminal(cmd.Cmd):
 
     def do_list_files(self, arg):
         print(self._peer.list_file())
+
+    def do_download(self, arg):
+        # TODO: implement download function
+        pass
