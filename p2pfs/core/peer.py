@@ -18,8 +18,8 @@ class Peer(MessageServer):
         self._publish_locks = {}
         self._publish_results = {}
 
-        self._list_file_lock = threading.Lock()
         # locks and results for list_file method
+        self._list_file_lock = threading.Lock()
         self._file_list = {}
 
         # socket connected to server
@@ -30,8 +30,8 @@ class Peer(MessageServer):
             exit(1)
 
     def publish(self, file):
-        # TODO: this method is not thread-safe, the following line only prevents sequential re-entrant but 2 threads
-        # can both pass the condition check and the lock-twice trick will possibly cause a deadlock
+        # TODO: this method is not thread-safe, the following line only prevents sequential re-entrant
+        # but 2 threads can both pass the condition check and the lock-twice trick will possibly cause a deadlock
         if file in self._publish_locks:
             return False, 'Publish file {} already in progress.'.format(file)
         if not os.path.exists(file):
