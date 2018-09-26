@@ -30,7 +30,9 @@ class Peer(MessageServer):
             exit(1)
 
     def publish(self, file):
-        if file in self._publish_locks and self._publish_locks[file].locked():
+        # TODO: this method is not thread-safe, the following line only prevents sequential re-entrant but 2 threads
+        # can both pass the condition check and the lock-twice trick will possibly cause a deadlock
+        if file in self._publish_locks:
             return False, 'Publish file {} already in progress.'.format(file)
         if not os.path.exists(file):
             return False, 'File {} doesn\'t exist'.format(file)
@@ -55,9 +57,7 @@ class Peer(MessageServer):
         return is_success, message
 
     def list_file(self):
-        # there's a request file list packet on the way
-        if self._list_file_lock.locked():
-            return self._file_list
+        # TODO: lock-twice trick is not thread-safe
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_FILE_LIST,
         })
