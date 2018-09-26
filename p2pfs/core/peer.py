@@ -2,6 +2,7 @@ from p2pfs.core.utils import MessageServer
 from p2pfs.core.message import MessageType
 import socket
 import logging
+import os.path
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +15,10 @@ class PeerServer(MessageServer):
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             exit(1)
+
+    def publish(self, file):
+        if not os.path.exists(file):
+            return False
 
     def _server_started(self):
         logger.info('Requesting to register')
