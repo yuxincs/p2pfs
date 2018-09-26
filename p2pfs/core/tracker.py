@@ -16,6 +16,15 @@ class Tracker(MessageServer):
         # {filename -> {id -> chunknum}}
         self._chunkinfo = {}
 
+    def file_list(self):
+        return self._file_list
+
+    def chunkinfo(self):
+        return self._chunkinfo
+
+    def peers(self):
+        return self._peers
+
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
         self._peers[client] = None
