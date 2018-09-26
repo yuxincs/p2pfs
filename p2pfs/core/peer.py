@@ -36,17 +36,24 @@ class Peer(MessageServer):
             return False, 'Publish file {} already in progress.'.format(file)
         if not os.path.exists(file):
             return False, 'File {} doesn\'t exist'.format(file)
+
+        # send out the request packet
         path, filename = os.path.split(file)
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_PUBLISH,
             'filename': filename,
             'size': os.stat(file).st_size
         })
+
+        # we need to lock twice
         lock = threading.Lock()
         self._publish_locks[filename] = lock
+        # first lock acquires the resource
         lock.acquire()
+        # second lock blocks the method until reply is ready
         lock.acquire()
         del self._publish_locks[filename]
+        # when we wake up it means the result is ready
         is_success, message = self._publish_results[filename]
         del self._publish_results[filename]
         if is_success:
@@ -61,6 +68,7 @@ class Peer(MessageServer):
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_FILE_LIST,
         })
+        # same technique of publish method
         self._list_file_lock.acquire()
         self._list_file_lock.acquire()
         return self._file_list
