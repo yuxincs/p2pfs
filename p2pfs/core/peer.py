@@ -63,6 +63,9 @@ class Peer(MessageServer):
         # remove the locks and results
         del self._publish_locks[filename]
         del self._publish_results[filename]
+        # just one release here, the other release is called within _process_message method when
+        # reply is ready
+        lock.release()
         return is_success, message
 
     def list_file(self):
@@ -73,6 +76,7 @@ class Peer(MessageServer):
         # same technique of publish method
         self._list_file_lock.acquire()
         self._list_file_lock.acquire()
+        self._list_file_lock.release()
         return self._file_list
 
     def download(self, file, destination, progress):
