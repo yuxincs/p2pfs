@@ -23,7 +23,7 @@ class Tracker(MessageServer):
         return self._chunkinfo
 
     def peers(self):
-        return self._peers.values()
+        return tuple(self._peers.values())
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
