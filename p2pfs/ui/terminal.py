@@ -18,6 +18,9 @@ class TrackerTerminal(cmd.Cmd):
     def do_list_peers(self, arg):
         print(self._tracker.peers())
 
+    def do_list_chunkinfo(self, arg):
+        print(self._tracker.chunkinfo())
+
 
 class PeerTerminal(cmd.Cmd):
     intro = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
