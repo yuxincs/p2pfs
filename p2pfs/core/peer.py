@@ -52,15 +52,17 @@ class Peer(MessageServer):
         lock.acquire()
         # second lock blocks the method until reply is ready
         lock.acquire()
-        del self._publish_locks[filename]
         # when we wake up it means the result is ready
         is_success, message = self._publish_results[filename]
-        del self._publish_results[filename]
         if is_success:
             self._file_map[filename] = file
             logger.info('File {} published on server with name {}'.format(file, filename))
         else:
             logger.info('File {} failed to publish, {}'.format(file, message))
+
+        # remove the locks and results
+        del self._publish_locks[filename]
+        del self._publish_results[filename]
         return is_success, message
 
     def list_file(self):
