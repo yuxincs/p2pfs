@@ -34,8 +34,7 @@ class Peer(MessageServer):
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_PUBLISH,
             'filename': filename,
-            'size': os.stat(file).st_size,
-            'chunkinfo': []
+            'size': os.stat(file).st_size
         })
         lock = threading.Lock()
         self._publish_locks[filename] = lock
