@@ -1,4 +1,5 @@
-import cmd, sys
+import cmd
+from tabulate import tabulate
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
 
@@ -13,10 +14,18 @@ class TrackerTerminal(cmd.Cmd):
         self._tracker = tracker
 
     def do_list_files(self, arg):
-        print(self._tracker.file_list())
+        file_list_dict = self._tracker.file_list()
+        file_list = []
+        headers = ['Filename']
+        for filename, fileinfo in file_list_dict.items():
+            if len(headers) == 1:
+                headers.extend(tuple(map(lambda x: x.capitalize(), tuple(fileinfo.keys()))))
+            file_list.append((filename, ) + tuple(fileinfo.values()))
+
+        print(tabulate(file_list, headers=headers))
 
     def do_list_peers(self, arg):
-        print(self._tracker.peers())
+        print(tabulate(self._tracker.peers(), headers=['UUID', 'IP/Port']))
 
     def do_list_chunkinfo(self, arg):
         print(self._tracker.chunkinfo())
