@@ -14,11 +14,15 @@ class Peer(MessageServer):
         # (remote filename) <-> (local filename)
         self._file_map = {}
 
+        # locks and results for publish method
         self._publish_locks = {}
         self._publish_results = {}
 
         self._list_file_lock = threading.Lock()
+        # locks and results for list_file method
         self._file_list = {}
+
+        # socket connected to server
         try:
             self._server_sock = self._connect(server, server_port)
         except ConnectionRefusedError:
