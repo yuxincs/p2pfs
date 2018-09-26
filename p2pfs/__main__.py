@@ -1,5 +1,6 @@
 from p2pfs.core.peer import Peer
 from p2pfs.core.tracker import Tracker
+from p2pfs.ui.terminal import TrackerTerminal, PeerTerminal
 import argparse
 import logging
 import coloredlogs
@@ -17,11 +18,15 @@ def main():
     results = arg_parser.parse_args()
 
     if results.option[0] == 'server':
-        server = Tracker(results.host, results.host_port)
-        server.start()
+        tracker = Tracker(results.host, results.host_port)
+        tracker.start()
+        terminal = TrackerTerminal(tracker)
+        terminal.cmdloop()
     elif results.option[0] == 'peer':
         peer = Peer(results.host, results.host_port, results.server, results.server_port)
         peer.start()
+        terminal = PeerTerminal(peer)
+        terminal.cmdloop()
     else:
         logging.error('Option must either be \'server\' or \'peer\'')
 
