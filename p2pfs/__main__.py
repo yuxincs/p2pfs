@@ -1,5 +1,5 @@
 from p2pfs.core.peer import PeerServer
-from p2pfs.core.server import CentralServer
+from p2pfs.core.server import Tracker
 import argparse
 import logging
 import coloredlogs
@@ -17,7 +17,7 @@ def main():
     results = arg_parser.parse_args()
 
     if results.option[0] == 'server':
-        server = CentralServer(results.host, results.host_port)
+        server = Tracker(results.host, results.host_port)
         server.start()
     elif results.option[0] == 'peer':
         peer = PeerServer(results.host, results.host_port, results.server, results.server_port)

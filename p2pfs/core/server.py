@@ -6,7 +6,7 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-class CentralServer(MessageServer):
+class Tracker(MessageServer):
     def __init__(self, host, port):
         super().__init__(host, port)
         self._peers = {}
