@@ -1,4 +1,4 @@
-from p2pfs.core.peer import PeerServer
+from p2pfs.core.peer import Peer
 from p2pfs.core.tracker import Tracker
 import argparse
 import logging
@@ -20,7 +20,7 @@ def main():
         server = Tracker(results.host, results.host_port)
         server.start()
     elif results.option[0] == 'peer':
-        peer = PeerServer(results.host, results.host_port, results.server, results.server_port)
+        peer = Peer(results.host, results.host_port, results.server, results.server_port)
         peer.start()
     else:
         logging.error('Option must either be \'server\' or \'peer\'')

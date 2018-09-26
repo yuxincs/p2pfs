@@ -7,7 +7,7 @@ import threading
 logger = logging.getLogger(__name__)
 
 
-class PeerServer(MessageServer):
+class Peer(MessageServer):
     def __init__(self, host, port, server, server_port):
         super().__init__(host, port)
         self._peers = {}
