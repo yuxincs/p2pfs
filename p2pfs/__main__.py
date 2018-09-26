@@ -1,5 +1,5 @@
 from p2pfs.core.peer import PeerServer
-from p2pfs.core.server import Tracker
+from p2pfs.core.tracker import Tracker
 import argparse
 import logging
 import coloredlogs

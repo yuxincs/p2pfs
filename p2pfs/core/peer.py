@@ -1,4 +1,4 @@
-from p2pfs.core.utils import MessageServer
+from p2pfs.core.server import MessageServer
 from p2pfs.core.message import MessageType
 import socket
 import logging
