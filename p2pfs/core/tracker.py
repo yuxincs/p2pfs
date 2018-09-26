@@ -3,6 +3,7 @@ from p2pfs.core.message import MessageType
 import socket
 import logging
 import uuid
+import math
 logger = logging.getLogger(__name__)
 
 
@@ -10,8 +11,10 @@ class Tracker(MessageServer):
     def __init__(self, host, port):
         super().__init__(host, port)
         self._peers = {}
-
+        # {filename -> fileinfo}
         self._file_list = {}
+        # {filename -> {id -> chunknum}}
+        self._chunkinfo = {}
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
@@ -40,8 +43,11 @@ class Tracker(MessageServer):
                 })
             else:
                 self._file_list[message['filename']] = {
-                    'size': message['size'],
-                    'chunkinfo': message['chunkinfo']
+                    'size': message['size']
+                }
+                chunknum = math.ceil(message['size'] / (512 * 1024))
+                self._chunkinfo[message['filename']] = {
+                    self._peers[client][0]: [(0, chunknum - 1)]
                 }
                 self._write_message(client, {
                     'type': MessageType.REPLY_PUBLISH,
