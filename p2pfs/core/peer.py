@@ -81,8 +81,12 @@ class Peer(MessageServer):
 
     def download(self, file, destination, progress):
         if file not in self._file_list.keys():
-            return False, 'Requested file {} does not exist'.format(file)
-        return True, 'File {} dowloaded to {} completed'.format(file, destination)
+            # refresh the file list
+            self.list_file()
+            # still not in list
+            if file not in self._file_list.keys():
+                return False, 'Requested file {} does not exist'.format(file)
+        return True, 'File {} dowloaded to {}'.format(file, destination)
 
     def _server_started(self):
         logger.info('Requesting to register')
