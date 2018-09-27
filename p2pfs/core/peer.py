@@ -51,7 +51,8 @@ class Peer(MessageServer):
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_PUBLISH,
             'filename': filename,
-            'size': os.stat(file).st_size
+            'fileinfo': {'size': os.stat(file).st_size},
+            'chunknum': math.ceil(os.stat(file).st_size / (512 * 1024))
         })
 
         # queue will block until the result is ready

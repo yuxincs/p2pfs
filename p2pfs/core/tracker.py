@@ -56,14 +56,11 @@ class Tracker(MessageServer):
                     'message': 'Filename already existed on server!'
                 })
             else:
-                self._file_list[message['filename']] = {
-                    'size': message['size']
-                }
-                chunknum = math.ceil(message['size'] / (512 * 1024))
+                self._file_list[message['filename']] = message['fileinfo']
                 # add to chunkinfo
                 # TODO: optimize how the chunknums are stored
                 self._chunkinfo[message['filename']] = {
-                    self._peers[client][0]: list(range(0, chunknum))
+                    self._peers[client][0]: list(range(0, message['chunknum']))
                 }
                 self._write_message(client, {
                     'type': MessageType.REPLY_PUBLISH,
@@ -72,7 +69,7 @@ class Tracker(MessageServer):
                     'message': 'Success'
                 })
                 logger.info('{} published file {} of {} chunks'
-                            .format(self._peers[client], message['filename'], chunknum))
+                            .format(self._peers[client], message['filename'], message['chunknum']))
         elif message['type'] == MessageType.REQUEST_FILE_LIST:
             self._write_message(client, {
                 'type': MessageType.REPLY_FILE_LIST,
