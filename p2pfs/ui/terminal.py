@@ -52,7 +52,12 @@ class PeerTerminal(cmd.Cmd):
         print(self._peer.list_file())
 
     def do_download(self, arg):
-        # TODO: implement download function
-        pass
+        filename, destionation, *_ = arg.split(' ')
+
+        def progress(current, total):
+            print('{} / {}, {}%'.format(current, total, int(current * 100 / total)))
+
+        self._peer.download(filename, destionation, progress)
+
     def do_exit(self, arg):
         self._peer.exit()
