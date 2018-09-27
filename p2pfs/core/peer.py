@@ -96,9 +96,7 @@ class Peer(MessageServer):
         # TODO: refactor this block, make it prettier
         for chunknum in range(totalchunknum):
             for peer_id, possessed_chunks in chunkinfo.items():
-                # first one is a range
-                smallest, largest = possessed_chunks[0]
-                if smallest <= chunknum <= largest or chunknum in possessed_chunks:
+                if chunknum in possessed_chunks:
                     # find the client based on peer id
                     peer = None
                     for client, client_id in self._peers.items():
@@ -113,7 +111,7 @@ class Peer(MessageServer):
                         'chunknum': chunknum
                     })
                     break
-
+        # TODO: update chunkinfo after receiving each chunk
         with open(destination, 'wb') as dest_file:
             dest_file.write(b'0' * fileinfo['size'])
             dest_file.flush()

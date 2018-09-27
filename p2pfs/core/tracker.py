@@ -60,8 +60,10 @@ class Tracker(MessageServer):
                     'size': message['size']
                 }
                 chunknum = math.ceil(message['size'] / (512 * 1024))
+                # add to chunkinfo
+                # TODO: optimize how the chunknums are stored
                 self._chunkinfo[message['filename']] = {
-                    self._peers[client][0]: [(0, chunknum - 1)]
+                    self._peers[client][0]: list(range(0, chunknum))
                 }
                 self._write_message(client, {
                     'type': MessageType.REPLY_PUBLISH,
@@ -83,6 +85,12 @@ class Tracker(MessageServer):
                 'fileinfo': self._file_list[message['filename']],
                 'chunkinfo': self._chunkinfo[message['filename']]
             })
+        elif message['type'] == MessageType.REQUEST_CHUNK_REGISTER:
+            peer_id, _ = self._peers[client]
+            if peer_id in self._chunkinfo[message['filename']]:
+                self._chunkinfo[message['filename']][peer_id].append(message['chunknum'])
+            else:
+                self._chunkinfo[message['filename']][peer_id] = [message['chunknum']]
         else:
             logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 
