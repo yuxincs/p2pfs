@@ -86,7 +86,6 @@ class Peer(MessageServer):
         self._download_results[file] = Queue()
         # wait until reply is ready
         chunkinfo = self._download_results[file].get()
-        logger.debug(chunkinfo)
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
     def exit(self):
