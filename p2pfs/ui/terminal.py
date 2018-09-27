@@ -44,7 +44,7 @@ class PeerTerminal(cmd.Cmd):
         self._peer = peer
 
     def do_list_peers(self, arg):
-        print(self._peer.peers())
+        print(tabulate(list(enumerate(self._peer.peers())), headers=['Index', 'UUID']))
 
     def do_publish(self, arg):
         arg = arg.split(' ')[0]
@@ -52,7 +52,15 @@ class PeerTerminal(cmd.Cmd):
         print(message)
 
     def do_list_files(self, arg):
-        print(self._peer.list_file())
+        file_list_dict = self._peer.list_file()
+        file_list = []
+        headers = ['Filename']
+        for filename, fileinfo in file_list_dict.items():
+            if len(headers) == 1:
+                headers.extend(tuple(map(lambda x: x.capitalize(), tuple(fileinfo.keys()))))
+            file_list.append((filename,) + tuple(fileinfo.values()))
+
+        print(tabulate(file_list, headers=headers))
 
     def do_download(self, arg):
         filename, destionation, *_ = arg.split(' ')
