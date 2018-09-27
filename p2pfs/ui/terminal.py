@@ -73,7 +73,7 @@ class PeerTerminal(cmd.Cmd):
                 progress.start = time.time()
                 progress.cur_speed = 0
             else:
-                progress.cur_speed = (512 * 1024) / (time.time() - progress.start)
+                progress.cur_speed = (Peer.CHUNK_SIZE) / (time.time() - progress.start)
                 progress.start = time.time()
 
             speed_str = ''
