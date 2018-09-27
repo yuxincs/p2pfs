@@ -58,7 +58,17 @@ class PeerTerminal(cmd.Cmd):
         filename, destionation, *_ = arg.split(' ')
 
         def progress(current, total):
-            print('{} / {}, {}%'.format(current, total, int(current * 100 / total)))
+            # TODO: add speed display
+            import sys
+            percent = current / total
+            progress_count = int(percent * 30)
+            dot_count = 30 - progress_count - 1
+            sys.stdout.write('Downloading {} '.format(filename))
+            sys.stdout.write('[' + progress_count * '=' + '>' +
+                             dot_count * '.' + '] ' + '{: >3d}'.format(int(percent * 100)) + '%\r')
+            sys.stdout.flush()
+            if current == total:
+                print('Downloading {} ['.format(filename) + 30 * '=' + '>] 100%')
 
         self._peer.download(filename, destionation, progress)
 
