@@ -120,6 +120,8 @@ class Peer(MessageServer):
         elif message['type'] == MessageType.REPLY_FILE_LIST:
             self._file_list = message['file_list']
             self._list_file_lock.release()
+        else:
+            logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
 
         logger.debug(self._peers.values())
 

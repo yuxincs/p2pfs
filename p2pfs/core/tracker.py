@@ -72,6 +72,8 @@ class Tracker(MessageServer):
                 'type': MessageType.REPLY_FILE_LIST,
                 'file_list': self._file_list
             })
+        else:
+            logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 
     def _client_closed(self, client):
         assert isinstance(client, socket.socket)
