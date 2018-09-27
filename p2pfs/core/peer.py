@@ -85,7 +85,9 @@ class Peer(MessageServer):
 
         self._download_results[file] = Queue()
         # wait until reply is ready
-        chunkinfo = self._download_results[file].get()
+        fileinfo, chunkinfo = self._download_results[file].get()
+        logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
+
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
     def exit(self):
@@ -124,7 +126,7 @@ class Peer(MessageServer):
         elif message['type'] == MessageType.REPLY_FILE_LIST:
             self._file_list_result.put(message['file_list'])
         elif message['type'] == MessageType.REPLY_FILE_LOCATION:
-            self._download_results[message['filename']].put(message['chunkinfo'])
+            self._download_results[message['filename']].put((message['fileinfo'], message['chunkinfo']))
         else:
             logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
 

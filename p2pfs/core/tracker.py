@@ -80,6 +80,7 @@ class Tracker(MessageServer):
             self._write_message(client, {
                 'type': MessageType.REPLY_FILE_LOCATION,
                 'filename': message['filename'],
+                'fileinfo': self._file_list[message['filename']],
                 'chunkinfo': self._chunkinfo[message['filename']]
             })
         else:
