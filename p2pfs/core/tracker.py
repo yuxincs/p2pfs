@@ -76,6 +76,12 @@ class Tracker(MessageServer):
                 'type': MessageType.REPLY_FILE_LIST,
                 'file_list': self._file_list
             })
+        elif message['type'] == MessageType.REQUEST_FILE_LOCATION:
+            self._write_message(client, {
+                'type': MessageType.REPLY_FILE_LOCATION,
+                'filename': message['filename'],
+                'chunkinfo': self._chunkinfo[message['filename']]
+            })
         else:
             logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 

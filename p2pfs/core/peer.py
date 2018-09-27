@@ -74,12 +74,19 @@ class Peer(MessageServer):
         return self._file_list
 
     def download(self, file, destination, progress):
-        if file not in self._file_list.keys():
-            # refresh the file list
-            self.list_file()
-            # still not in list
+        with self._file_list_lock:
             if file not in self._file_list.keys():
-                return False, 'Requested file {} does not exist'.format(file)
+                return False, 'Requested file {} does not exist, try list_file?'.format(file)
+
+        self._write_message(self._server_sock, {
+            'type': MessageType.REQUEST_FILE_LOCATION,
+            'filename': file
+        })
+
+        self._download_results[file] = Queue()
+        # wait until reply is ready
+        chunkinfo = self._download_results[file].get()
+        logger.debug(chunkinfo)
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
     def exit(self):
