@@ -116,8 +116,6 @@ class Peer(MessageServer):
                     break
         # TODO: update chunkinfo after receiving each chunk
         with open(destination + '.temp', 'wb') as dest_file:
-            dest_file.write(b'0' * fileinfo['size'])
-            dest_file.flush()
             self._file_map[file] = destination
             for i in range(totalchunknum):
                 number, raw_data = self._download_results[file].get()
