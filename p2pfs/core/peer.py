@@ -77,16 +77,21 @@ class Peer(MessageServer):
         with self._file_list_lock:
             if self._file_list is None or file not in self._file_list.keys():
                 return False, 'Requested file {} does not exist, try list_file?'.format(file)
+        with self._download_lock:
+            if file in self._download_results:
+                return False, 'Download {} already in progress.'.format(file)
+            self._download_results[file] = Queue()
 
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_FILE_LOCATION,
             'filename': file
         })
-
-        self._download_results[file] = Queue()
         # wait until reply is ready
         fileinfo, chunkinfo = self._download_results[file].get()
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
+
+        with self._download_lock:
+            del self._download_results[file]
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
