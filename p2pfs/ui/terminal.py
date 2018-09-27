@@ -66,14 +66,30 @@ class PeerTerminal(cmd.Cmd):
         filename, destionation, *_ = arg.split(' ')
 
         def progress(current, total):
-            # TODO: add speed display
+            import time
             import sys
+
+            if current == 1:
+                progress.start = time.time()
+                progress.cur_speed = 0
+            else:
+                progress.cur_speed = (512 * 1024) / (time.time() - progress.start)
+                progress.start = time.time()
+
+            speed_str = ''
+            if progress.cur_speed < 1024:
+                speed_str = '{0:>6.1f}  B/s'.format(progress.cur_speed)
+            elif 1024 < progress.cur_speed < 1024 * 1024:
+                speed_str = '{0:>6.1f} KB/s'.format(progress.cur_speed / 1024)
+            elif 1024 * 1024 < progress.cur_speed < 1024 * 1024 * 1024:
+                speed_str = '{0:>6.1f} MB/s'.format(progress.cur_speed / (1024 * 1024))
+
             percent = current / total
             progress_count = int(percent * 30)
             dot_count = 30 - progress_count - 1
             sys.stdout.write('Downloading {} '.format(filename))
-            sys.stdout.write('[' + progress_count * '=' + '>' +
-                             dot_count * '.' + '] ' + '{: >3d}'.format(int(percent * 100)) + '%\r')
+            sys.stdout.write('[{}>{}]{: >3d}% {}\r'
+                             .format(progress_count * '=', dot_count * '.', int(percent * 100), speed_str))
             sys.stdout.flush()
             if current == total:
                 print('Downloading {} ['.format(filename) + 30 * '=' + '>] 100%')
