@@ -13,7 +13,6 @@ class MessageServer:
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind((host, port))
         self._process_lock = threading.Lock()
-        self._connection_lock = threading.Lock()
         self._compressor = zstd.ZstdCompressor()
         self._decompressor = zstd.ZstdDecompressor()
 
@@ -28,9 +27,7 @@ class MessageServer:
         while True:
             client, address = self._sock.accept()
             logger.info('New connection from {}'.format(address))
-            self._connection_lock.acquire()
             self._client_connected(client)
-            self._connection_lock.release()
             threading.Thread(target=self._read_message, args=(client,)).start()
 
     @staticmethod
@@ -66,14 +63,13 @@ class MessageServer:
                 msg = json.loads(self._decompressor.decompress(raw_msg).decode('utf-8'))
                 logger.debug('Message {} from {}'.format(self.__message_log(msg), client.getpeername()))
                 # process the packets in order
+                # TODO: remove this lock for better parallelism
                 self._process_lock.acquire()
                 self._process_message(client, msg)
                 self._process_lock.release()
         except EOFError:
             logger.warning('{} closed unexpectedly'.format(client.getpeername()))
-            self._connection_lock.acquire()
             self._client_closed(client)
-            self._connection_lock.release()
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
