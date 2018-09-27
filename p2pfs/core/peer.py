@@ -121,6 +121,12 @@ class Peer(MessageServer):
                 dest_file.seek(number * (512 * 1024), 0)
                 dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
                 dest_file.flush()
+                # send request chunk register to server
+                self._write_message(self._server_sock, {
+                    'type': MessageType.REQUEST_CHUNK_REGISTER,
+                    'filename': file,
+                    'chunknum': number
+                })
                 progress(i + 1, totalchunknum)
                 logger.debug('Got {}\'s chunk # {}'.format(file, number))
 
@@ -177,11 +183,6 @@ class Peer(MessageServer):
                 'filename': message['filename'],
                 'chunknum': message['chunknum'],
                 'data': pybase64.b64encode(raw_data).decode('utf-8')
-            })
-            self._write_message(self._server_sock, {
-                'type': MessageType.REQUEST_CHUNK_REGISTER,
-                'filename': message['filename'],
-                'chunknum': message['chunknum']
             })
         elif message['type'] == MessageType.PEER_REPLY_CHUNK:
             self._download_results[message['filename']].put((message['chunknum'], message['data']))
