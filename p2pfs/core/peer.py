@@ -195,6 +195,7 @@ class Peer(MessageServer):
         logger.debug(self._peers.values())
 
     def _client_closed(self, client):
+        # TODO: hanlde client closed unexpectedly
         assert isinstance(client, socket.socket)
         if client is self._server_sock:
             logger.error('Server {} closed unexpectedly'.format(client.getpeername()))

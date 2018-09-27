@@ -95,6 +95,7 @@ class Tracker(MessageServer):
             logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 
     def _client_closed(self, client):
+        # TODO: hanlde client closed unexpectedly
         assert isinstance(client, socket.socket)
         del self._peers[client]
         logger.debug(self._peers.values())
