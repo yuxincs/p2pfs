@@ -67,6 +67,9 @@ class Peer(MessageServer):
             del self._publish_results[filename]
         return is_success, message
 
+    def peers(self):
+        return tuple(self._peers.values())
+
     def list_file(self):
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_FILE_LIST,

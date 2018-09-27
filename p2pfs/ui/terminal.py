@@ -43,6 +43,9 @@ class PeerTerminal(cmd.Cmd):
         assert isinstance(peer, Peer)
         self._peer = peer
 
+    def do_list_peers(self, arg):
+        print(self._peer.peers())
+
     def do_publish(self, arg):
         arg = arg.split(' ')[0]
         _, message = self._peer.publish(arg)
