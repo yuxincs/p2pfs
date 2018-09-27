@@ -88,6 +88,11 @@ class Peer(MessageServer):
                 return False, 'Requested file {} does not exist'.format(file)
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
+    def exit(self):
+        self._server_sock.close()
+        for client, _ in self._peers.items():
+            client.close()
+
     def _server_started(self):
         logger.info('Requesting to register')
         self._write_message(self._server_sock, {

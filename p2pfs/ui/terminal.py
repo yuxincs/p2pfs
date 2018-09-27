@@ -30,6 +30,9 @@ class TrackerTerminal(cmd.Cmd):
     def do_list_chunkinfo(self, arg):
         print(self._tracker.chunkinfo())
 
+    def do_exit(self, arg):
+        self._tracker.exit()
+
 
 class PeerTerminal(cmd.Cmd):
     intro = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
@@ -51,3 +54,5 @@ class PeerTerminal(cmd.Cmd):
     def do_download(self, arg):
         # TODO: implement download function
         pass
+    def do_exit(self, arg):
+        self._peer.exit()
