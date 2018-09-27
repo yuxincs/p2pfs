@@ -75,7 +75,7 @@ class Peer(MessageServer):
 
     def download(self, file, destination, progress):
         with self._file_list_lock:
-            if file not in self._file_list.keys():
+            if self._file_list is None or file not in self._file_list.keys():
                 return False, 'Requested file {} does not exist, try list_file?'.format(file)
 
         self._write_message(self._server_sock, {
