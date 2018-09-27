@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class Peer(MessageServer):
+    CHUNK_SIZE = 512 * 1024
+
     def __init__(self, host, port, server, server_port):
         super().__init__(host, port)
         self._peers = {}
@@ -52,7 +54,7 @@ class Peer(MessageServer):
             'type': MessageType.REQUEST_PUBLISH,
             'filename': filename,
             'fileinfo': {'size': os.stat(file).st_size},
-            'chunknum': math.ceil(os.stat(file).st_size / (512 * 1024))
+            'chunknum': math.ceil(os.stat(file).st_size / Peer.CHUNK_SIZE)
         })
 
         # queue will block until the result is ready
@@ -94,7 +96,7 @@ class Peer(MessageServer):
         })
         # wait until reply is ready
         fileinfo, chunkinfo = self._download_results[file].get()
-        totalchunknum = math.ceil(fileinfo['size'] / (512 * 1024))
+        totalchunknum = math.ceil(fileinfo['size'] / Peer.CHUNK_SIZE)
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
 
         # TODO: refactor this block, make it prettier
@@ -120,7 +122,7 @@ class Peer(MessageServer):
             self._file_map[file] = destination
             for i in range(totalchunknum):
                 number, raw_data = self._download_results[file].get()
-                dest_file.seek(number * (512 * 1024), 0)
+                dest_file.seek(number * Peer.CHUNK_SIZE, 0)
                 dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
                 dest_file.flush()
                 # send request chunk register to server
@@ -181,8 +183,8 @@ class Peer(MessageServer):
             assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])
             local_file = self._file_map[message['filename']]
             with open(local_file, 'rb') as f:
-                f.seek(message['chunknum'] * (512 * 1024), 0)
-                raw_data = f.read(512 * 1024)
+                f.seek(message['chunknum'] * Peer.CHUNK_SIZE, 0)
+                raw_data = f.read(Peer.CHUNK_SIZE)
             self._write_message(client, {
                 'type': MessageType.PEER_REPLY_CHUNK,
                 'filename': message['filename'],
