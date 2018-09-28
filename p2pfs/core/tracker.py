@@ -3,7 +3,6 @@ from p2pfs.core.message import MessageType
 import socket
 import logging
 import uuid
-import math
 logger = logging.getLogger(__name__)
 
 
