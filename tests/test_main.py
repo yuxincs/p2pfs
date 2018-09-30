@@ -56,3 +56,6 @@ def test_main():
     os.remove('test_big_file')
     os.remove('downloaded_small_file')
     os.remove('downloaded_big_file')
+    peer1.exit()
+    peer2.exit()
+    tracker.exit()
