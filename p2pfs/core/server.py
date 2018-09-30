@@ -17,13 +17,13 @@ class MessageServer:
         self._decompressor = zstd.ZstdDecompressor()
 
     def start(self):
+        self._sock.listen(5)
+        logger.info('Start listening on {}'.format(self._sock.getsockname()))
         # put server listening into a thread
         threading.Thread(target=self._listen).start()
         self._server_started()
 
     def _listen(self):
-        self._sock.listen(5)
-        logger.info('Start listening on {}'.format(self._sock.getsockname()))
         while True:
             client, address = self._sock.accept()
             logger.info('New connection from {}'.format(address))
