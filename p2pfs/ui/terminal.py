@@ -31,7 +31,8 @@ class TrackerTerminal(cmd.Cmd):
         print(self._tracker.chunkinfo())
 
     def do_exit(self, arg):
-        self._tracker.exit()
+        self._tracker.stop()
+        return True
 
 
 class PeerTerminal(cmd.Cmd):
@@ -98,4 +99,5 @@ class PeerTerminal(cmd.Cmd):
         print(message)
 
     def do_exit(self, arg):
-        self._peer.exit()
+        self._peer.stop()
+        return True
