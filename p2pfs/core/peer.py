@@ -148,10 +148,9 @@ class Peer(MessageServer):
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
-    def exit(self):
+    def stop(self):
         self._server_sock.close()
-        for client, _ in self._peers.items():
-            client.close()
+        super().stop()
 
     def _server_started(self):
         logger.info('Requesting to register')

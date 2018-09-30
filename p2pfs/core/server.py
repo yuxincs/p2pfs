@@ -17,6 +17,8 @@ class MessageServer:
         self._decompressor = zstd.ZstdDecompressor()
 
         self._is_running = True
+        self._connections_lock = threading.Lock()
+        self._connections = []
 
     def start(self):
         self._sock.listen(5)
@@ -28,13 +30,17 @@ class MessageServer:
     def stop(self):
         self._is_running = False
         self._sock.close()
+        for client in self._connections:
+            client.close()
 
     def _listen(self):
         try:
             while self._is_running:
                 client, address = self._sock.accept()
                 logger.info('New connection from {}'.format(address))
-                self._client_connected(client)
+                with self._connections_lock:
+                    self._client_connected(client)
+                    self._connections.append(client)
                 threading.Thread(target=self._read_message, args=(client,)).start()
         except ConnectionAbortedError or OSError as e:
             if self._is_running:
@@ -82,7 +88,10 @@ class MessageServer:
                 self._process_lock.release()
         except EOFError:
             logger.warning('{} closed unexpectedly'.format(client.getpeername()))
-            self._client_closed(client)
+            with self._connections_lock:
+                assert client in self._connections
+                self._connections.remove(client)
+                self._client_closed(client)
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)

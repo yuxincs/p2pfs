@@ -24,10 +24,6 @@ class Tracker(MessageServer):
     def peers(self):
         return tuple(self._peers.values())
 
-    def exit(self):
-        for client, _ in self._peers.items():
-            client.close()
-
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)
         self._peers[client] = None
