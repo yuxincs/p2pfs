@@ -16,6 +16,8 @@ class MessageServer:
         self._compressor = zstd.ZstdCompressor()
         self._decompressor = zstd.ZstdDecompressor()
 
+        self.is_running = True
+
     def start(self):
         self._sock.listen(5)
         logger.info('Start listening on {}'.format(self._sock.getsockname()))
@@ -23,12 +25,23 @@ class MessageServer:
         threading.Thread(target=self._listen).start()
         self._server_started()
 
+    def stop(self):
+        self.is_running = False
+        self._sock.close()
+
     def _listen(self):
-        while True:
-            client, address = self._sock.accept()
-            logger.info('New connection from {}'.format(address))
-            self._client_connected(client)
-            threading.Thread(target=self._read_message, args=(client,)).start()
+        try:
+            while self.is_running:
+                client, address = self._sock.accept()
+                logger.info('New connection from {}'.format(address))
+                self._client_connected(client)
+                threading.Thread(target=self._read_message, args=(client,)).start()
+        except ConnectionAbortedError or OSError as e:
+            if self.is_running:
+                # if exception occurred during normal execution
+                logger.error(e)
+            else:
+                pass
 
     @staticmethod
     def __recvall(sock, n):
