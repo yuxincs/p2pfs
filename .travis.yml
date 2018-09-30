@@ -1,0 +1,27 @@
+sudo: false
+
+language: python
+
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
+cache: pip
+
+install:
+  - pip install tox-travis
+
+script:
+  - tox
+
+jobs:
+  include:
+    - stage: codecov
+      python: 3.6
+      script:
+        - tox
+        - bash <(curl -s https://codecov.io/bash)
+
+notifications:
+  email: false
