@@ -15,6 +15,9 @@ class Peer(MessageServer):
 
     def __init__(self, host, port, server, server_port):
         super().__init__(host, port)
+        self._serverconfig = (server, server_port)
+        self._server_sock = None
+
         self._peers = {}
         # (remote filename) <-> (local filename)
         self._file_map = {}
@@ -32,12 +35,14 @@ class Peer(MessageServer):
         self._download_lock = threading.Lock()
         self._download_results = {}
 
+    def start(self):
         # socket connected to server
         try:
-            self._server_sock = self._connect(server, server_port)
+            self._server_sock = self._connect(*self._serverconfig)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             exit(1)
+        super().start()
 
     def publish(self, file):
         path, filename = os.path.split(file)
