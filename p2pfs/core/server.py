@@ -46,7 +46,7 @@ class MessageServer:
                     self._client_connected(client)
                     self._connections.add(client)
                 threading.Thread(target=self._read_message, args=(client,)).start()
-        except ConnectionAbortedError or OSError as e:
+        except (ConnectionAbortedError, OSError) as e:
             if self._is_running:
                 # if exception occurred during normal execution
                 logger.error(e)
