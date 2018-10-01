@@ -68,6 +68,8 @@ class MessageServer:
         logger.info('Connecting to {}'.format((ip, port)))
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((ip, port))
+        with self._connections_lock:
+            self._connections.add(client)
         threading.Thread(target=self._read_message, args=(client,)).start()
         logger.info('Successfully connected to {} on {}'.format((ip, port), client.getsockname()))
         return client
