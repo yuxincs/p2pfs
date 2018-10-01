@@ -30,8 +30,10 @@ class MessageServer:
         self._server_started()
 
     def stop(self):
+        # shutdown the server
         self._is_running = False
         self._sock.close()
+        # close all connections
         for client in self._connections:
             client.close()
 
@@ -78,6 +80,7 @@ class MessageServer:
         assert isinstance(client, socket.socket)
         try:
             while True:
+                # receive length header -> decompress (bytes) -> decode to str (str) -> json load (dict)
                 raw_msg_len = self.__recvall(client, 4)
                 msglen = struct.unpack('>I', raw_msg_len)[0]
                 raw_msg = self.__recvall(client, msglen)
@@ -99,8 +102,8 @@ class MessageServer:
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
         logger.debug('Writing {} to {}'.format(self.__message_log(message), client.getpeername()))
+        # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
         raw_msg = json.dumps(message).encode('utf-8')
-
         compressed = self._compressor.compress(raw_msg)
         logger.debug('Compressed rate: {}'.format(len(compressed) / len(raw_msg)))
         compressed = struct.pack('>I', len(compressed)) + compressed
