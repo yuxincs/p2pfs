@@ -90,9 +90,8 @@ class MessageServer:
                 logger.debug('Message {} from {}'.format(self.__message_log(msg), client.getpeername()))
                 # process the packets in order
                 # TODO: remove this lock for better parallelism
-                self._process_lock.acquire()
-                self._process_message(client, msg)
-                self._process_lock.release()
+                with self._process_lock:
+                    self._process_message(client, msg)
         except (EOFError, OSError):
             if self._is_running:
                 logger.warning('{} closed unexpectedly'.format(client.getpeername()))
