@@ -18,10 +18,6 @@ def fmd5(fname):
 def test_main():
     peer_1, peer_2 = Peer('localhost', 0, 'localhost', 8880), Peer('localhost', 0, 'localhost', 8880)
     tracker = Tracker('localhost', 8880)
-    tracker.start()
-    peer_1.start()
-    peer_2.start()
-    
     with open('test_small_file', 'wb') as fout:
         fout.write(os.urandom(1000))
 
@@ -29,6 +25,11 @@ def test_main():
         # write 500MB random data into the file
         for _ in range(500):
             fout.write(os.urandom(1000 * 1000))
+
+    tracker.start()
+    peer_1.start()
+    peer_2.start()
+
     # peer1 publish small file and peer2 downloads it
     peer_1.publish('test_small_file')
     file_list = tracker.file_list()
