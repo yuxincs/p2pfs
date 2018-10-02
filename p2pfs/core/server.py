@@ -14,6 +14,8 @@ class MessageServer:
     def __init__(self, host, port):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind((host, port))
+        self._sock.settimeout(MessageServer._SOCKET_TIMEOUT)
+        
         self._process_lock = threading.Lock()
         self._compressor = zstd.ZstdCompressor()
         self._decompressor = zstd.ZstdDecompressor()
