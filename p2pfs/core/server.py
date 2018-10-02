@@ -121,10 +121,10 @@ class MessageServer:
             if self._is_running:
                 with self._connections_lock:
                     assert client in self._connections
-                    client.close()
                     self._connections.remove(client)
                     self._threads.remove(threading.current_thread())
                     self._client_closed(client)
+                    client.close()
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
