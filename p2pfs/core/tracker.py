@@ -83,6 +83,7 @@ class Tracker(MessageServer):
 
     def _client_closed(self, client):
         # TODO: hanlde client closed unexpectedly
+        logger.warning('{} closed'.format(client.getpeername()))
         assert isinstance(client, socket.socket)
         del self._peers[client]
         logger.debug(self._peers.values())

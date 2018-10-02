@@ -119,7 +119,6 @@ class MessageServer:
                     self._process_message(client, msg)
         except (EOFError, OSError):
             if self._is_running:
-                logger.warning('{} closed'.format(client.getpeername()))
                 with self._connections_lock:
                     assert client in self._connections
                     client.close()
