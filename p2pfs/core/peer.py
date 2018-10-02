@@ -108,24 +108,25 @@ class Peer(MessageServer):
         totalchunknum = math.ceil(fileinfo['size'] / Peer.CHUNK_SIZE)
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
 
-        # TODO: refactor this block, make it prettier
-        for chunknum in range(totalchunknum):
-            for peer_id, possessed_chunks in chunkinfo.items():
-                if chunknum in possessed_chunks:
-                    # find the client based on peer id
-                    peer = None
-                    for client, client_id in self._peers.items():
-                        if client_id == peer_id:
-                            peer = client
-                    # TODO: handle this later
-                    assert peer is not None
-                    # write the message to ask the chunk
-                    self._write_message(peer, {
-                        'type': MessageType.PEER_REQUEST_CHUNK,
-                        'filename': file,
-                        'chunknum': chunknum
-                    })
-                    break
+        # TODO: decide which peer to request chunk
+        peers = {}
+        try:
+            for chunknum in range(totalchunknum):
+                for peer_address, possessed_chunks in chunkinfo.items():
+                    if chunknum in possessed_chunks:
+                        if peer_address not in peers:
+                            peers[peer_address] = self._connect(peer_address)
+                        # write the message to ask the chunk
+                        self._write_message(peers[peer_address], {
+                            'type': MessageType.PEER_REQUEST_CHUNK,
+                            'filename': file,
+                            'chunknum': chunknum
+                        })
+                        break
+        finally:
+            for address, client in peers.items():
+                client.close()
+
         # TODO: update chunkinfo after receiving each chunk
         with open(destination + '.temp', 'wb') as dest_file:
             self._file_map[file] = destination
