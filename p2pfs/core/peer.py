@@ -7,6 +7,7 @@ import threading
 from queue import Queue
 import math
 import pybase64
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -115,7 +116,8 @@ class Peer(MessageServer):
                 for peer_address, possessed_chunks in chunkinfo.items():
                     if chunknum in possessed_chunks:
                         if peer_address not in peers:
-                            peers[peer_address] = self._connect(peer_address)
+                            # peer_address is a string, since JSON requires keys being strings
+                            peers[peer_address] = self._connect(json.loads(peer_address))
                         # write the message to ask the chunk
                         self._write_message(peers[peer_address], {
                             'type': MessageType.PEER_REQUEST_CHUNK,

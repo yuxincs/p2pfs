@@ -2,6 +2,7 @@ from p2pfs.core.server import MessageServer
 from p2pfs.core.message import MessageType
 import socket
 import logging
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +33,8 @@ class Tracker(MessageServer):
         assert isinstance(client, socket.socket)
         if message['type'] == MessageType.REQUEST_REGISTER:
             assert client in self._peers
-            self._peers[client] = message['address']
+            # peer_address is a string, since JSON requires keys being strings
+            self._peers[client] = json.dumps(message['address'])
             logger.debug(self._peers.values())
         elif message['type'] == MessageType.REQUEST_PUBLISH:
             if message['filename'] in self._file_list:
