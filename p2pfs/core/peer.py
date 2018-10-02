@@ -18,7 +18,6 @@ class Peer(MessageServer):
         self._serverconfig = (server, server_port)
         self._server_sock = None
 
-        self._peers = {}
         # (remote filename) <-> (local filename)
         self._file_map = {}
 
@@ -82,9 +81,6 @@ class Peer(MessageServer):
         with self._publish_lock:
             del self._publish_results[filename]
         return is_success, message
-
-    def peers(self):
-        return tuple(self._peers.values())
 
     def list_file(self):
         self._write_message(self._server_sock, {
@@ -155,11 +151,6 @@ class Peer(MessageServer):
             del self._download_results[file]
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
-
-    def _client_connected(self, client):
-        assert isinstance(client, socket.socket)
-        self._peers[client] = None
-        logger.debug(self._peers.values())
 
     def _process_message(self, client, message):
         if message['type'] == MessageType.REPLY_REGISTER:
