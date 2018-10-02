@@ -17,7 +17,7 @@ def fmd5(fname):
 
 def test_server_refused():
     peer = Peer('localhost', 0, 'localhost', 8880)
-    started, _ = peer.start()
+    started = peer.start()
     assert not started
 
 
@@ -32,9 +32,9 @@ def test_main():
         for _ in range(500):
             fout.write(os.urandom(1000 * 1000))
 
-    tracker_started, _ = tracker.start()
-    peer_1_started, _ = peer_1.start()
-    peer_2_started, _ = peer_2.start()
+    tracker_started = tracker.start()
+    peer_1_started = peer_1.start()
+    peer_2_started = peer_2.start()
     assert tracker_started and peer_1_started and peer_2_started
 
     # peer1 publish small file and peer2 downloads it

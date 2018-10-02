@@ -36,6 +36,7 @@ class MessageServer:
         thread = threading.Thread(target=self._listen)
         thread.start()
         self._threads.add(thread)
+        return True
 
     def stop(self):
         # shutdown the server

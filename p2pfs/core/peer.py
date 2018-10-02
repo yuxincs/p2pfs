@@ -40,7 +40,7 @@ class Peer(MessageServer):
             self._server_sock = self._connect(self._serverconfig)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
-            return False, 'Server connection refused!'
+            return False
         # start the internal server
         super().start()
         # send out register message
@@ -49,7 +49,7 @@ class Peer(MessageServer):
             'type': MessageType.REQUEST_REGISTER,
             'address': self._sock.getsockname()
         })
-        return True, None
+        return True
 
     def publish(self, file):
         path, filename = os.path.split(file)
