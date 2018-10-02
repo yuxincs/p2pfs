@@ -36,13 +36,20 @@ class Peer(MessageServer):
         self._download_results = {}
 
     def start(self):
-        # socket connected to server
+        # connect to server
         try:
             self._server_sock = self._connect(*self._serverconfig)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             return False, 'Server connection refused!'
+        # start the internal server
         super().start()
+        # send out register message
+        logger.info('Requesting to register')
+        self._write_message(self._server_sock, {
+            'type': MessageType.REQUEST_REGISTER,
+            'address': self._sock.getsockname()
+        })
         return True, None
 
     def publish(self, file):
@@ -148,13 +155,6 @@ class Peer(MessageServer):
             del self._download_results[file]
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
-
-    def _server_started(self):
-        logger.info('Requesting to register')
-        self._write_message(self._server_sock, {
-            'type': MessageType.REQUEST_REGISTER,
-            'address': self._sock.getsockname()
-        })
 
     def _client_connected(self, client):
         assert isinstance(client, socket.socket)

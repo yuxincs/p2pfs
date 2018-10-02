@@ -36,7 +36,6 @@ class MessageServer:
         thread = threading.Thread(target=self._listen)
         thread.start()
         self._threads.add(thread)
-        self._server_started()
 
     def stop(self):
         # shutdown the server
@@ -136,9 +135,6 @@ class MessageServer:
         logger.debug('Compressed rate: {}'.format(len(compressed) / len(raw_msg)))
         compressed = struct.pack('>I', len(compressed)) + compressed
         client.sendall(compressed)
-
-    def _server_started(self):
-        pass
 
     def _client_connected(self, client):
         pass
