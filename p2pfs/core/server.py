@@ -36,7 +36,7 @@ class MessageServer:
         thread = threading.Thread(target=self._listen)
         thread.start()
         self._threads.add(thread)
-        self._server_started()
+        return True
 
     def stop(self):
         # shutdown the server
@@ -73,6 +73,22 @@ class MessageServer:
             else:
                 pass
 
+    def _connect(self, address):
+        logger.info('Connecting to {}'.format(address))
+        client = socket.create_connection(address)
+        client.settimeout(MessageServer._SOCKET_TIMEOUT)
+        with self._connections_lock:
+            self._connections.add(client)
+        thread = threading.Thread(target=self._read_message, args=(client,))
+        thread.start()
+        self._threads.add(thread)
+        logger.info('Successfully connected to {} on {}'.format(address, client.getsockname()))
+        return client
+
+    @staticmethod
+    def __message_log(message):
+        return {key: message[key] for key in message if key != 'data'} if 'data' in message else message
+
     @staticmethod
     def __recvall(sock, n):
         """helper function to recv n bytes or raise exception if EOF is hit"""
@@ -86,22 +102,6 @@ class MessageServer:
             except socket.timeout:
                 pass
         return data
-
-    def _connect(self, ip, port):
-        logger.info('Connecting to {}'.format((ip, port)))
-        client = socket.create_connection((ip, port))
-        client.settimeout(MessageServer._SOCKET_TIMEOUT)
-        with self._connections_lock:
-            self._connections.add(client)
-        thread = threading.Thread(target=self._read_message, args=(client,))
-        thread.start()
-        self._threads.add(thread)
-        logger.info('Successfully connected to {} on {}'.format((ip, port), client.getsockname()))
-        return client
-
-    @staticmethod
-    def __message_log(message):
-        return {key: message[key] for key in message if key != 'data'} if 'data' in message else message
 
     def _read_message(self, client):
         assert isinstance(client, socket.socket)
@@ -119,13 +119,12 @@ class MessageServer:
                     self._process_message(client, msg)
         except (EOFError, OSError):
             if self._is_running:
-                logger.warning('{} closed'.format(client.getpeername()))
                 with self._connections_lock:
                     assert client in self._connections
-                    client.close()
                     self._connections.remove(client)
                     self._threads.remove(threading.current_thread())
                     self._client_closed(client)
+                    client.close()
 
     def _write_message(self, client, message):
         assert isinstance(client, socket.socket)
@@ -136,9 +135,6 @@ class MessageServer:
         logger.debug('Compressed rate: {}'.format(len(compressed) / len(raw_msg)))
         compressed = struct.pack('>I', len(compressed)) + compressed
         client.sendall(compressed)
-
-    def _server_started(self):
-        pass
 
     def _client_connected(self, client):
         pass

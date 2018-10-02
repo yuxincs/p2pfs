@@ -15,6 +15,12 @@ def fmd5(fname):
     return hash_md5.hexdigest()
 
 
+def test_server_refused():
+    peer = Peer('localhost', 0, 'localhost', 8880)
+    started = peer.start()
+    assert not started
+
+
 def test_main():
     peer_1, peer_2 = Peer('localhost', 0, 'localhost', 8880), Peer('localhost', 0, 'localhost', 8880)
     tracker = Tracker('localhost', 8880)
@@ -26,9 +32,10 @@ def test_main():
         for _ in range(500):
             fout.write(os.urandom(1000 * 1000))
 
-    tracker.start()
-    peer_1.start()
-    peer_2.start()
+    tracker_started = tracker.start()
+    peer_1_started = peer_1.start()
+    peer_2_started = peer_2.start()
+    assert tracker_started and peer_1_started and peer_2_started
 
     # peer1 publish small file and peer2 downloads it
     peer_1.publish('test_small_file')

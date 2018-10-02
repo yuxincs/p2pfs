@@ -7,6 +7,7 @@ import threading
 from queue import Queue
 import math
 import pybase64
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +19,6 @@ class Peer(MessageServer):
         self._serverconfig = (server, server_port)
         self._server_sock = None
 
-        self._peers = {}
         # (remote filename) <-> (local filename)
         self._file_map = {}
 
@@ -36,13 +36,21 @@ class Peer(MessageServer):
         self._download_results = {}
 
     def start(self):
-        # socket connected to server
+        # connect to server
         try:
-            self._server_sock = self._connect(*self._serverconfig)
+            self._server_sock = self._connect(self._serverconfig)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
-            exit(1)
+            return False
+        # start the internal server
         super().start()
+        # send out register message
+        logger.info('Requesting to register')
+        self._write_message(self._server_sock, {
+            'type': MessageType.REQUEST_REGISTER,
+            'address': self._sock.getsockname()
+        })
+        return True
 
     def publish(self, file):
         path, filename = os.path.split(file)
@@ -75,9 +83,6 @@ class Peer(MessageServer):
             del self._publish_results[filename]
         return is_success, message
 
-    def peers(self):
-        return tuple(self._peers.values())
-
     def list_file(self):
         self._write_message(self._server_sock, {
             'type': MessageType.REQUEST_FILE_LIST,
@@ -104,76 +109,57 @@ class Peer(MessageServer):
         totalchunknum = math.ceil(fileinfo['size'] / Peer.CHUNK_SIZE)
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
 
-        # TODO: refactor this block, make it prettier
-        for chunknum in range(totalchunknum):
-            for peer_id, possessed_chunks in chunkinfo.items():
-                if chunknum in possessed_chunks:
-                    # find the client based on peer id
-                    peer = None
-                    for client, client_id in self._peers.items():
-                        if client_id == peer_id:
-                            peer = client
-                    # TODO: handle this later
-                    assert peer is not None
-                    # write the message to ask the chunk
-                    self._write_message(peer, {
-                        'type': MessageType.PEER_REQUEST_CHUNK,
+        # TODO: decide which peer to request chunk
+        peers = {}
+        try:
+            for chunknum in range(totalchunknum):
+                for peer_address, possessed_chunks in chunkinfo.items():
+                    if chunknum in possessed_chunks:
+                        if peer_address not in peers:
+                            # peer_address is a string, since JSON requires keys being strings
+                            peers[peer_address] = self._connect(json.loads(peer_address))
+                        # write the message to ask the chunk
+                        self._write_message(peers[peer_address], {
+                            'type': MessageType.PEER_REQUEST_CHUNK,
+                            'filename': file,
+                            'chunknum': chunknum
+                        })
+                        break
+
+            # TODO: update chunkinfo after receiving each chunk
+            with open(destination + '.temp', 'wb') as dest_file:
+                self._file_map[file] = destination
+                for i in range(totalchunknum):
+                    number, raw_data = self._download_results[file].get()
+                    dest_file.seek(number * Peer.CHUNK_SIZE, 0)
+                    dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
+                    dest_file.flush()
+                    # send request chunk register to server
+                    self._write_message(self._server_sock, {
+                        'type': MessageType.REQUEST_CHUNK_REGISTER,
                         'filename': file,
-                        'chunknum': chunknum
+                        'chunknum': number
                     })
-                    break
-        # TODO: update chunkinfo after receiving each chunk
-        with open(destination + '.temp', 'wb') as dest_file:
-            self._file_map[file] = destination
-            for i in range(totalchunknum):
-                number, raw_data = self._download_results[file].get()
-                dest_file.seek(number * Peer.CHUNK_SIZE, 0)
-                dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
-                dest_file.flush()
-                # send request chunk register to server
-                self._write_message(self._server_sock, {
-                    'type': MessageType.REQUEST_CHUNK_REGISTER,
-                    'filename': file,
-                    'chunknum': number
-                })
-                if progress is not None:
-                    progress(i + 1, totalchunknum)
-                logger.debug('Got {}\'s chunk # {}'.format(file, number))
+                    if progress is not None:
+                        progress(i + 1, totalchunknum)
+                    logger.debug('Got {}\'s chunk # {}'.format(file, number))
 
-        # change the temp file into the actual file
-        os.rename(destination + '.temp', destination)
+            # change the temp file into the actual file
+            os.rename(destination + '.temp', destination)
 
-        with self._download_lock:
-            del self._download_results[file]
+            with self._download_lock:
+                del self._download_results[file]
+
+        finally:
+            # close the sockets no matter what happens
+            for _, client in peers.items():
+                client.close()
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
-    def _server_started(self):
-        logger.info('Requesting to register')
-        self._write_message(self._server_sock, {
-            'type': MessageType.REQUEST_REGISTER,
-            'address': self._sock.getsockname()
-        })
-
-    def _client_connected(self, client):
-        assert isinstance(client, socket.socket)
-        self._peers[client] = None
-        logger.debug(self._peers.values())
-
     def _process_message(self, client, message):
         if message['type'] == MessageType.REPLY_REGISTER:
-            logger.info('Successfully registered with id {}'.format(message['id']))
-            for (id, (ip, port)) in message['peer_list']:
-                client = self._connect(ip, port)
-                self._peers[client] = id
-                self._write_message(client, {
-                    'type': MessageType.PEER_GREET,
-                    'id': message['id']
-                })
-        elif message['type'] == MessageType.PEER_GREET:
-            logger.info('Greetings from peer with id {}'.format(message['id']))
-            assert client in self._peers
-            self._peers[client] = message['id']
+            logger.info('Successfully registered.')
         elif message['type'] == MessageType.REPLY_PUBLISH:
             self._publish_results[message['filename']].put((message['result'], message['message']))
         elif message['type'] == MessageType.REPLY_FILE_LIST:
@@ -197,14 +183,9 @@ class Peer(MessageServer):
         else:
             logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
 
-        logger.debug(self._peers.values())
-
     def _client_closed(self, client):
         # TODO: hanlde client closed unexpectedly
         assert isinstance(client, socket.socket)
         if client is self._server_sock:
             logger.error('Server {} closed unexpectedly'.format(client.getpeername()))
             exit(1)
-        else:
-            del self._peers[client]
-        logger.debug(self._peers.values())

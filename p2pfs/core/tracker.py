@@ -2,7 +2,7 @@ from p2pfs.core.server import MessageServer
 from p2pfs.core.message import MessageType
 import socket
 import logging
-import uuid
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -12,7 +12,7 @@ class Tracker(MessageServer):
         self._peers = {}
         # {filename -> fileinfo}
         self._file_list = {}
-        # {filename -> {id -> chunknum}}
+        # {filename -> {(address) -> chunknum}}
         self._chunkinfo = {}
 
     def file_list(self):
@@ -33,14 +33,8 @@ class Tracker(MessageServer):
         assert isinstance(client, socket.socket)
         if message['type'] == MessageType.REQUEST_REGISTER:
             assert client in self._peers
-            # assign an ID and reply with the peer list
-            id = str(uuid.uuid4())
-            self._write_message(client, {
-                'type': MessageType.REPLY_REGISTER,
-                'id': id,
-                'peer_list': tuple(filter(lambda x: x is not None, self._peers.values()))
-            })
-            self._peers[client] = (id, message['address'])
+            # peer_address is a string, since JSON requires keys being strings
+            self._peers[client] = json.dumps(message['address'])
             logger.debug(self._peers.values())
         elif message['type'] == MessageType.REQUEST_PUBLISH:
             if message['filename'] in self._file_list:
@@ -55,7 +49,7 @@ class Tracker(MessageServer):
                 # add to chunkinfo
                 # TODO: optimize how the chunknums are stored
                 self._chunkinfo[message['filename']] = {
-                    self._peers[client][0]: list(range(0, message['chunknum']))
+                    self._peers[client]: list(range(0, message['chunknum']))
                 }
                 self._write_message(client, {
                     'type': MessageType.REPLY_PUBLISH,
@@ -78,16 +72,18 @@ class Tracker(MessageServer):
                 'chunkinfo': self._chunkinfo[message['filename']]
             })
         elif message['type'] == MessageType.REQUEST_CHUNK_REGISTER:
-            peer_id, _ = self._peers[client]
-            if peer_id in self._chunkinfo[message['filename']]:
-                self._chunkinfo[message['filename']][peer_id].append(message['chunknum'])
+            peer_address = self._peers[client]
+            # TODO: merge the chunknum with the list
+            if peer_address in self._chunkinfo[message['filename']]:
+                self._chunkinfo[message['filename']][peer_address].append(message['chunknum'])
             else:
-                self._chunkinfo[message['filename']][peer_id] = [message['chunknum']]
+                self._chunkinfo[message['filename']][peer_address] = [message['chunknum']]
         else:
             logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 
     def _client_closed(self, client):
         # TODO: hanlde client closed unexpectedly
+        logger.warning('{} closed'.format(client.getpeername()))
         assert isinstance(client, socket.socket)
         del self._peers[client]
         logger.debug(self._peers.values())
