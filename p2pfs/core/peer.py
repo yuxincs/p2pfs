@@ -185,6 +185,3 @@ class Peer(MessageServer):
         if client is self._server_sock:
             logger.error('Server {} closed unexpectedly'.format(client.getpeername()))
             exit(1)
-        else:
-            del self._peers[client]
-        logger.debug(self._peers.values())
