@@ -33,14 +33,7 @@ class Tracker(MessageServer):
         assert isinstance(client, socket.socket)
         if message['type'] == MessageType.REQUEST_REGISTER:
             assert client in self._peers
-            # assign an ID and reply with the peer list
-            id = str(uuid.uuid4())
-            self._write_message(client, {
-                'type': MessageType.REPLY_REGISTER,
-                'id': id,
-                'peer_list': tuple(filter(lambda x: x is not None, self._peers.values()))
-            })
-            self._peers[client] = (id, message['address'])
+            self._peers[client] = message['address']
             logger.debug(self._peers.values())
         elif message['type'] == MessageType.REQUEST_PUBLISH:
             if message['filename'] in self._file_list:

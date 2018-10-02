@@ -154,18 +154,7 @@ class Peer(MessageServer):
 
     def _process_message(self, client, message):
         if message['type'] == MessageType.REPLY_REGISTER:
-            logger.info('Successfully registered with id {}'.format(message['id']))
-            for (id, (ip, port)) in message['peer_list']:
-                client = self._connect(ip, port)
-                self._peers[client] = id
-                self._write_message(client, {
-                    'type': MessageType.PEER_GREET,
-                    'id': message['id']
-                })
-        elif message['type'] == MessageType.PEER_GREET:
-            logger.info('Greetings from peer with id {}'.format(message['id']))
-            assert client in self._peers
-            self._peers[client] = message['id']
+            logger.info('Successfully registered.')
         elif message['type'] == MessageType.REPLY_PUBLISH:
             self._publish_results[message['filename']].put((message['result'], message['message']))
         elif message['type'] == MessageType.REPLY_FILE_LIST:
