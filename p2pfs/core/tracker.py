@@ -2,7 +2,6 @@ from p2pfs.core.server import MessageServer
 from p2pfs.core.message import MessageType
 import socket
 import logging
-import uuid
 logger = logging.getLogger(__name__)
 
 
@@ -12,7 +11,7 @@ class Tracker(MessageServer):
         self._peers = {}
         # {filename -> fileinfo}
         self._file_list = {}
-        # {filename -> {id -> chunknum}}
+        # {filename -> {(address) -> chunknum}}
         self._chunkinfo = {}
 
     def file_list(self):
@@ -48,7 +47,7 @@ class Tracker(MessageServer):
                 # add to chunkinfo
                 # TODO: optimize how the chunknums are stored
                 self._chunkinfo[message['filename']] = {
-                    self._peers[client][0]: list(range(0, message['chunknum']))
+                    self._peers[client]: list(range(0, message['chunknum']))
                 }
                 self._write_message(client, {
                     'type': MessageType.REPLY_PUBLISH,
@@ -71,11 +70,12 @@ class Tracker(MessageServer):
                 'chunkinfo': self._chunkinfo[message['filename']]
             })
         elif message['type'] == MessageType.REQUEST_CHUNK_REGISTER:
-            peer_id, _ = self._peers[client]
-            if peer_id in self._chunkinfo[message['filename']]:
-                self._chunkinfo[message['filename']][peer_id].append(message['chunknum'])
+            peer_address = self._peers[client]
+            # TODO: merge the chunknum with the list
+            if peer_address in self._chunkinfo[message['filename']]:
+                self._chunkinfo[message['filename']][peer_address].append(message['chunknum'])
             else:
-                self._chunkinfo[message['filename']][peer_id] = [message['chunknum']]
+                self._chunkinfo[message['filename']][peer_address] = [message['chunknum']]
         else:
             logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
 
