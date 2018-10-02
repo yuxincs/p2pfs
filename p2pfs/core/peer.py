@@ -178,8 +178,6 @@ class Peer(MessageServer):
         else:
             logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
 
-        logger.debug(self._peers.values())
-
     def _client_closed(self, client):
         # TODO: hanlde client closed unexpectedly
         assert isinstance(client, socket.socket)
