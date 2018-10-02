@@ -123,33 +123,35 @@ class Peer(MessageServer):
                             'chunknum': chunknum
                         })
                         break
+
+            # TODO: update chunkinfo after receiving each chunk
+            with open(destination + '.temp', 'wb') as dest_file:
+                self._file_map[file] = destination
+                for i in range(totalchunknum):
+                    number, raw_data = self._download_results[file].get()
+                    dest_file.seek(number * Peer.CHUNK_SIZE, 0)
+                    dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
+                    dest_file.flush()
+                    # send request chunk register to server
+                    self._write_message(self._server_sock, {
+                        'type': MessageType.REQUEST_CHUNK_REGISTER,
+                        'filename': file,
+                        'chunknum': number
+                    })
+                    if progress is not None:
+                        progress(i + 1, totalchunknum)
+                    logger.debug('Got {}\'s chunk # {}'.format(file, number))
+
+            # change the temp file into the actual file
+            os.rename(destination + '.temp', destination)
+
+            with self._download_lock:
+                del self._download_results[file]
+
         finally:
+            # close the sockets no matter what happens
             for _, client in peers.items():
                 client.close()
-
-        # TODO: update chunkinfo after receiving each chunk
-        with open(destination + '.temp', 'wb') as dest_file:
-            self._file_map[file] = destination
-            for i in range(totalchunknum):
-                number, raw_data = self._download_results[file].get()
-                dest_file.seek(number * Peer.CHUNK_SIZE, 0)
-                dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
-                dest_file.flush()
-                # send request chunk register to server
-                self._write_message(self._server_sock, {
-                    'type': MessageType.REQUEST_CHUNK_REGISTER,
-                    'filename': file,
-                    'chunknum': number
-                })
-                if progress is not None:
-                    progress(i + 1, totalchunknum)
-                logger.debug('Got {}\'s chunk # {}'.format(file, number))
-
-        # change the temp file into the actual file
-        os.rename(destination + '.temp', destination)
-
-        with self._download_lock:
-            del self._download_results[file]
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
