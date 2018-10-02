@@ -86,16 +86,16 @@ class MessageServer:
                 pass
         return data
 
-    def _connect(self, ip, port):
-        logger.info('Connecting to {}'.format((ip, port)))
-        client = socket.create_connection((ip, port))
+    def _connect(self, address):
+        logger.info('Connecting to {}'.format(address))
+        client = socket.create_connection(address)
         client.settimeout(MessageServer._SOCKET_TIMEOUT)
         with self._connections_lock:
             self._connections.add(client)
         thread = threading.Thread(target=self._read_message, args=(client,))
         thread.start()
         self._threads.add(thread)
-        logger.info('Successfully connected to {} on {}'.format((ip, port), client.getsockname()))
+        logger.info('Successfully connected to {} on {}'.format(address, client.getsockname()))
         return client
 
     @staticmethod
