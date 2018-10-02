@@ -124,7 +124,7 @@ class Peer(MessageServer):
                         })
                         break
         finally:
-            for address, client in peers.items():
+            for _, client in peers.items():
                 client.close()
 
         # TODO: update chunkinfo after receiving each chunk
