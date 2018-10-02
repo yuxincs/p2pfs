@@ -46,7 +46,7 @@ class MessageServer:
         for client in self._connections:
             client.close()
 
-        for thread in self._threads:
+        for thread in set(self._threads):
             thread.join()
 
     def _listen(self):
