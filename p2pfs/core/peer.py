@@ -41,8 +41,9 @@ class Peer(MessageServer):
             self._server_sock = self._connect(*self._serverconfig)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
-            exit(1)
+            return False, 'Server connection refused!'
         super().start()
+        return True, None
 
     def publish(self, file):
         path, filename = os.path.split(file)
