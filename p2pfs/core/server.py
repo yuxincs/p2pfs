@@ -73,20 +73,6 @@ class MessageServer:
             else:
                 pass
 
-    @staticmethod
-    def __recvall(sock, n):
-        """helper function to recv n bytes or raise exception if EOF is hit"""
-        data = b''
-        while len(data) < n:
-            try:
-                packet = sock.recv(n - len(data))
-                if not packet:
-                    raise EOFError('peer socket closed')
-                data += packet
-            except socket.timeout:
-                pass
-        return data
-
     def _connect(self, address):
         logger.info('Connecting to {}'.format(address))
         client = socket.create_connection(address)
@@ -102,6 +88,20 @@ class MessageServer:
     @staticmethod
     def __message_log(message):
         return {key: message[key] for key in message if key != 'data'} if 'data' in message else message
+
+    @staticmethod
+    def __recvall(sock, n):
+        """helper function to recv n bytes or raise exception if EOF is hit"""
+        data = b''
+        while len(data) < n:
+            try:
+                packet = sock.recv(n - len(data))
+                if not packet:
+                    raise EOFError('peer socket closed')
+                data += packet
+            except socket.timeout:
+                pass
+        return data
 
     def _read_message(self, client):
         assert isinstance(client, socket.socket)
