@@ -133,12 +133,13 @@ class Peer(MessageServer):
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
                 for i in range(totalchunknum):
-                    number, raw_data, digest = self._download_results[file].get()
+                    number, data, digest = self._download_results[file].get()
+                    raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
                     # TODO: handle if corrupted
                     if self._hashfunc(raw_data).hexdigest() != digest:
                         assert False
                     dest_file.seek(number * Peer.CHUNK_SIZE, 0)
-                    dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
+                    dest_file.write(raw_data)
                     dest_file.flush()
                     # send request chunk register to server
                     self._write_message(self._server_sock, {
@@ -178,13 +179,12 @@ class Peer(MessageServer):
             with open(local_file, 'rb') as f:
                 f.seek(message['chunknum'] * Peer.CHUNK_SIZE, 0)
                 raw_data = f.read(Peer.CHUNK_SIZE)
-            data = pybase64.b64encode(raw_data).decode('utf-8')
             self._write_message(client, {
                 'type': MessageType.PEER_REPLY_CHUNK,
                 'filename': message['filename'],
                 'chunknum': message['chunknum'],
-                'data': data,
-                'digest': self._hashfunc(data).hexdigest()
+                'data': pybase64.b64encode(raw_data).decode('utf-8'),
+                'digest': self._hashfunc(raw_data).hexdigest()
             })
         elif message['type'] == MessageType.PEER_REPLY_CHUNK:
             self._download_results[message['filename']].put((message['chunknum'], message['data'], message['digest']))
