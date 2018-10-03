@@ -8,6 +8,7 @@ from queue import Queue
 import math
 import pybase64
 import json
+import hashlib
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +35,8 @@ class Peer(MessageServer):
         # lock and results for download
         self._download_lock = threading.Lock()
         self._download_results = {}
+
+        self._hashfunc = hashlib.sha256
 
     def start(self):
         # connect to server
@@ -130,7 +133,10 @@ class Peer(MessageServer):
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
                 for i in range(totalchunknum):
-                    number, raw_data = self._download_results[file].get()
+                    number, raw_data, digest = self._download_results[file].get()
+                    # TODO: handle if corrupted
+                    if self._hashfunc(raw_data).hexdigest() != digest:
+                        assert False
                     dest_file.seek(number * Peer.CHUNK_SIZE, 0)
                     dest_file.write(pybase64.b64decode(raw_data.encode('utf-8'), validate=True))
                     dest_file.flush()
@@ -172,14 +178,16 @@ class Peer(MessageServer):
             with open(local_file, 'rb') as f:
                 f.seek(message['chunknum'] * Peer.CHUNK_SIZE, 0)
                 raw_data = f.read(Peer.CHUNK_SIZE)
+            data = pybase64.b64encode(raw_data).decode('utf-8')
             self._write_message(client, {
                 'type': MessageType.PEER_REPLY_CHUNK,
                 'filename': message['filename'],
                 'chunknum': message['chunknum'],
-                'data': pybase64.b64encode(raw_data).decode('utf-8')
+                'data': data,
+                'digest': self._hashfunc(data).hexdigest()
             })
         elif message['type'] == MessageType.PEER_REPLY_CHUNK:
-            self._download_results[message['filename']].put((message['chunknum'], message['data']))
+            self._download_results[message['filename']].put((message['chunknum'], message['data'], message['digest']))
         else:
             logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
 
