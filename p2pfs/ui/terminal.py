@@ -58,7 +58,7 @@ class PeerTerminal(cmd.Cmd):
         print(tabulate(file_list, headers=headers))
 
     def do_download(self, arg):
-        filename, destionation, *_ = arg.split(' ')
+        filename, destination, *_ = arg.split(' ')
 
         def progress(current, total):
             import time
@@ -90,6 +90,7 @@ class PeerTerminal(cmd.Cmd):
                 print('Downloading {} ['.format(filename) + 30 * '=' + '>] 100%')
 
         _, message = self._peer.download(filename, destionation, progress)
+        _, message = self._peer.download(filename, destination, progress)
         print(message)
 
     def do_exit(self, arg):
