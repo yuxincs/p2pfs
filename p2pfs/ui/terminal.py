@@ -24,6 +24,9 @@ class TrackerTerminal(cmd.Cmd):
 
         print(tabulate(file_list, headers=headers))
 
+    def do_list_peers(self, arg):
+        print(self._tracker.peers())
+
     def do_list_chunkinfo(self, arg):
         print(self._tracker.chunkinfo())
 
