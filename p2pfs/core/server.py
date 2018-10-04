@@ -134,7 +134,9 @@ class MessageServer:
         compressed = self._compressor.compress(raw_msg)
         logger.debug('Compressed rate: {}'.format(len(compressed) / len(raw_msg)))
         compressed = struct.pack('>I', len(compressed)) + compressed
+        client.setblocking(True)
         client.sendall(compressed)
+        client.settimeout(MessageServer._SOCKET_TIMEOUT)
 
     def _client_connected(self, client):
         pass
