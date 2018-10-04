@@ -55,14 +55,15 @@ class Peer(MessageServer):
         return True
 
     def publish(self, file):
+        if not os.path.exists(file):
+            return False, 'File {} doesn\'t exist'.format(file)
+        
         path, filename = os.path.split(file)
         # guard the check to prevent 2 threads passing the check simultaneously
         with self._publish_lock:
             if filename in self._publish_results:
                 return False, 'Publish file {} already in progress.'.format(file)
             self._publish_results[filename] = Queue(maxsize=1)
-        if not os.path.exists(file):
-            return False, 'File {} doesn\'t exist'.format(file)
 
         # send out the request packet
         self._write_message(self._server_sock, {
