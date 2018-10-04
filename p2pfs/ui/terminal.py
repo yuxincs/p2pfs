@@ -62,37 +62,22 @@ class PeerTerminal(cmd.Cmd):
 
     def do_download(self, arg):
         filename, destination, *_ = arg.split(' ')
+        from tqdm import tqdm
 
-        def progress(current, total):
-            import time
-            import sys
+        def tqdm_hook_wrapper(t):
+            last_chunk = [0]
 
-            if current == 1:
-                progress.start = time.time()
-                progress.cur_speed = 0
-            else:
-                progress.cur_speed = (Peer.CHUNK_SIZE) / (time.time() - progress.start)
-                progress.start = time.time()
+            def update_to(chunknum=1, chunksize=1, tsize=None):
+                if tsize is not None:
+                    t.total = tsize
+                t.update((chunknum - last_chunk[0]) * chunksize)
+                last_chunk[0] = chunknum
 
-            speed_str = ''
-            if progress.cur_speed < 1024:
-                speed_str = '{0:>6.1f}  B/s'.format(progress.cur_speed)
-            elif 1024 < progress.cur_speed < 1024 * 1024:
-                speed_str = '{0:>6.1f} KB/s'.format(progress.cur_speed / 1024)
-            elif 1024 * 1024 < progress.cur_speed < 1024 * 1024 * 1024:
-                speed_str = '{0:>6.1f} MB/s'.format(progress.cur_speed / (1024 * 1024))
+            return update_to
 
-            percent = current / total
-            progress_count = int(percent * 30)
-            dot_count = 30 - progress_count - 1
-            sys.stdout.write('Downloading {} '.format(filename))
-            sys.stdout.write('[{}>{}]{: >3d}% {}\r'
-                             .format(progress_count * '=', dot_count * '.', int(percent * 100), speed_str))
-            sys.stdout.flush()
-            if current == total:
-                print('Downloading {} ['.format(filename) + 30 * '=' + '>] 100%')
-
-        _, message = self._peer.download(filename, destination, progress)
+        with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
+            hook = tqdm_hook_wrapper(t)
+            _, message = self._peer.download(filename, destination, reporthook=hook)
         print(message)
 
     def do_exit(self, arg):
