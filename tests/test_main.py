@@ -44,10 +44,15 @@ def test_main():
     assert file_list['test_small_file']['size'] == 1000
     file_list = peer_2.list_file()
     assert 'test_small_file' in file_list
-    result, msg = peer_2.download('test_small_file', 'downloaded_small_file')
+
+    def reporthook(chunk_num, chunk_size, total_size):
+        reporthook.value = (chunk_num, total_size)
+
+    result, msg = peer_2.download('test_small_file', 'downloaded_small_file', reporthook=reporthook)
     assert result is True
     assert os.path.exists('downloaded_small_file')
     assert fmd5('test_small_file') == fmd5('downloaded_small_file')
+    assert reporthook.value == (1, 1000)
 
     peer_2.publish('test_big_file')
     file_list = tracker.file_list()
