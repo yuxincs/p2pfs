@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Peer(MessageServer):
     _CHUNK_SIZE = 512 * 1024
+    _HASH_FUNC = hashlib.sha256
 
     def __init__(self, host, port, server, server_port):
         super().__init__(host, port)
@@ -35,8 +36,6 @@ class Peer(MessageServer):
         # lock and results for download
         self._download_lock = threading.Lock()
         self._download_results = {}
-
-        self._hashfunc = hashlib.sha256
 
     def start(self):
         # connect to server
@@ -136,7 +135,7 @@ class Peer(MessageServer):
                     number, data, digest = self._download_results[file].get()
                     raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
                     # TODO: handle if corrupted
-                    if self._hashfunc(raw_data).hexdigest() != digest:
+                    if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
                         assert False
                     dest_file.seek(number * Peer._CHUNK_SIZE, 0)
                     dest_file.write(raw_data)
@@ -184,7 +183,7 @@ class Peer(MessageServer):
                 'filename': message['filename'],
                 'chunknum': message['chunknum'],
                 'data': pybase64.b64encode(raw_data).decode('utf-8'),
-                'digest': self._hashfunc(raw_data).hexdigest()
+                'digest': Peer._HASH_FUNC(raw_data).hexdigest()
             })
         elif message['type'] == MessageType.PEER_REPLY_CHUNK:
             self._download_results[message['filename']].put((message['chunknum'], message['data'], message['digest']))
