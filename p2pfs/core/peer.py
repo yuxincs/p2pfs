@@ -93,7 +93,7 @@ class Peer(MessageServer):
             self._file_list = self._file_list_result.get()
         return self._file_list
 
-    def download(self, file, destination, progress=None):
+    def download(self, file, destination, reporthook=None):
         with self._file_list_lock:
             if self._file_list is None or file not in self._file_list.keys():
                 return False, 'Requested file {} does not exist, try list_file?'.format(file)
@@ -146,8 +146,8 @@ class Peer(MessageServer):
                         'filename': file,
                         'chunknum': number
                     })
-                    if progress is not None:
-                        progress(i + 1, totalchunknum)
+                    if reporthook:
+                        reporthook(i + 1, Peer._CHUNK_SIZE, fileinfo['size'])
                     logger.debug('Got {}\'s chunk # {}'.format(file, number))
 
             # change the temp file into the actual file
