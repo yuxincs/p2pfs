@@ -89,7 +89,6 @@ class PeerTerminal(cmd.Cmd):
             if current == total:
                 print('Downloading {} ['.format(filename) + 30 * '=' + '>] 100%')
 
-        _, message = self._peer.download(filename, destionation, progress)
         _, message = self._peer.download(filename, destination, progress)
         print(message)
 
