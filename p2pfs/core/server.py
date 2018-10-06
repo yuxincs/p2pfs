@@ -44,6 +44,7 @@ class MessageServer:
         logger.info('Start listening on {}'.format(self._address))
         # start server
         await asyncio.start_server(self.__new_connection, *self._address, loop=self._loop)
+        return True
 
     async def stop(self):
         for writer in self._writers:
