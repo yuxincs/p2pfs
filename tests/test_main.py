@@ -1,6 +1,10 @@
 import os
 import hashlib
+import asyncio
 from p2pfs import Peer, Tracker
+import uvloop
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 def fmd5(fname):
@@ -17,7 +21,7 @@ def fmd5(fname):
 
 def test_server_refused():
     peer = Peer('localhost', 0, 'localhost', 8880)
-    started = peer.start()
+    started = asyncio.get_event_loop().run_until_complete(peer.start())
     assert not started
 
 
