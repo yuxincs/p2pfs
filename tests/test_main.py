@@ -35,36 +35,40 @@ def test_main():
         # write 500MB random data into the file
         for _ in range(500):
             fout.write(os.urandom(1000 * 1000))
-
-    tracker_started = tracker.start()
-    peer_1_started = peer_1.start()
-    peer_2_started = peer_2.start()
+    loop = asyncio.get_event_loop()
+    tracker_started = loop.run_until_complete(tracker.start())
+    # spawn 2 peers concurrently
+    peer_1_started, peer_2_started = \
+        loop.run_until_complete(asyncio.gather(peer_1.start(), peer_2.start(), loop=loop))
     assert tracker_started and peer_1_started and peer_2_started
 
     # peer1 publish small file and peer2 downloads it
-    peer_1.publish('test_small_file')
+    loop.run_until_complete(peer_1.publish('test_small_file'))
     file_list = tracker.file_list()
     assert 'test_small_file' in file_list
     assert file_list['test_small_file']['size'] == 1000
-    file_list = peer_2.list_file()
+    file_list = loop.run_until_complete(peer_2.list_file())
     assert 'test_small_file' in file_list
 
     def reporthook(chunk_num, chunk_size, total_size):
         reporthook.value = (chunk_num, total_size)
 
-    result, msg = peer_2.download('test_small_file', 'downloaded_small_file', reporthook=reporthook)
+    result, msg = loop.run_until_complete(
+        peer_2.download('test_small_file', 'downloaded_small_file', reporthook=reporthook)
+    )
+
     assert result is True
     assert os.path.exists('downloaded_small_file')
     assert fmd5('test_small_file') == fmd5('downloaded_small_file')
     assert reporthook.value == (1, 1000)
 
-    peer_2.publish('test_big_file')
+    loop.run_until_complete(peer_2.publish('test_big_file'))
     file_list = tracker.file_list()
     assert 'test_big_file' in file_list and 'test_small_file' in file_list
     assert file_list['test_big_file']['size'] == 500 * 1000 * 1000
-    file_list = peer_1.list_file()
+    file_list = loop.run_until_complete(peer_1.list_file())
     assert 'test_big_file' in file_list and 'test_small_file' in file_list
-    result, msg = peer_1.download('test_big_file', 'downloaded_big_file')
+    result, msg = loop.run_until_complete(peer_1.download('test_big_file', 'downloaded_big_file'))
     assert result is True
     assert os.path.exists('downloaded_big_file')
     assert fmd5('test_big_file') == fmd5('downloaded_big_file')
@@ -76,3 +80,4 @@ def test_main():
     peer_1.stop()
     peer_2.stop()
     tracker.stop()
+    loop.close()
