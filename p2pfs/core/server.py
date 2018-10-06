@@ -1,12 +1,27 @@
-from p2pfs.core.message import MessageType
 from abc import abstractmethod
 import json
 import struct
 import logging
 import zstandard as zstd
 import asyncio
-
+from enum import Enum, auto
 logger = logging.getLogger(__name__)
+
+
+class MessageType(Enum):
+    REQUEST_REGISTER = auto()
+    REQUEST_PUBLISH = auto()
+    REQUEST_FILE_LIST = auto()
+    REQUEST_FILE_LOCATION = auto()
+    REQUEST_CHUNK_REGISTER = auto()
+    REQUEST_LEAVE = auto()
+    REPLY_REGISTER = auto()
+    REPLY_FILE_LIST = auto()
+    REPLY_PUBLISH = auto()
+    REPLY_FILE_LOCATION = auto()
+    REPLY_LEAVE = auto()
+    PEER_REQUEST_CHUNK = auto()
+    PEER_REPLY_CHUNK = auto()
 
 
 class MessageServer:
