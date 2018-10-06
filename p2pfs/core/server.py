@@ -31,8 +31,7 @@ class MessageServer:
     _SOCKET_TIMEOUT = 5
 
     def __init__(self, host, port, loop=None):
-        self._host = host
-        self._port = port
+        self._address = (host, port)
         self._loop = loop
 
         self._compressor = zstd.ZstdCompressor()
@@ -42,9 +41,9 @@ class MessageServer:
         self._writers = set()
 
     async def start(self):
-        logger.info('Start listening on {}'.format((self._host, self._port)))
+        logger.info('Start listening on {}'.format(self._address))
         # start server
-        await asyncio.start_server(self.__new_connection, self._host, self._port, loop=self._loop)
+        await asyncio.start_server(self.__new_connection, *self._address, loop=self._loop)
 
     async def stop(self):
         for writer in self._writers:
