@@ -8,6 +8,7 @@ import math
 import pybase64
 import json
 import hashlib
+import asyncio
 logger = logging.getLogger(__name__)
 
 
@@ -15,184 +16,165 @@ class Peer(MessageServer):
     _CHUNK_SIZE = 512 * 1024
     _HASH_FUNC = hashlib.sha256
 
-    def __init__(self, host, port, server, server_port):
-        super().__init__(host, port)
-        self._serverconfig = (server, server_port)
-        self._server_sock = None
+    def __init__(self, host, port, server, server_port, loop=None):
+        super().__init__(host, port, loop=loop)
+        self._server_config = (server, server_port)
+        self._server_reader, self._server_writer = None, None
 
         # (remote filename) <-> (local filename)
         self._file_map = {}
 
-        # lock and results for publish method
-        self._publish_lock = threading.Lock()
-        self._publish_results = {}
+        self._pending_publish = set()
 
-        # lock and results for list_file method
-        self._file_list = None
-        self._file_list_lock = threading.Lock()
-        self._file_list_result = Queue()
-
-        # lock and results for download
-        self._download_lock = threading.Lock()
-        self._download_results = {}
-
-    def start(self):
+    async def start(self):
         # connect to server
         try:
-            self._server_sock = self._connect(self._serverconfig)
+            self._server_reader, self._server_writer = \
+                await asyncio.open_connection(*self._server_config, loop=self._loop)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             return False
         # start the internal server
-        super().start()
+        await super().start()
         # send out register message
         logger.info('Requesting to register')
-        self._write_message(self._server_sock, {
+        await self._write_message(self._server_writer, {
             'type': MessageType.REQUEST_REGISTER,
-            'address': self._sock.getsockname()
+            'address': self._server_config
         })
+        message = await self._read_message(self._server_reader)
+        assert MessageType(message['type']) == MessageType.REPLY_REGISTER
+        logger.info('Successfully registered.')
         return True
 
-    def publish(self, file):
-        if not os.path.exists(file):
-            return False, 'File {} doesn\'t exist'.format(file)
-        
-        path, filename = os.path.split(file)
-        # guard the check to prevent 2 threads passing the check simultaneously
-        with self._publish_lock:
-            if filename in self._publish_results:
-                return False, 'Publish file {} already in progress.'.format(file)
-            self._publish_results[filename] = Queue(maxsize=1)
+    async def publish(self, local_file, remote_name=None):
+        if not os.path.exists(local_file):
+            return False, 'File {} doesn\'t exist'.format(local_file)
+
+        _, remote_name = os.path.split(local_file) if remote_name is None else remote_name
+
+        if remote_name in self._pending_publish:
+            return False, 'Publish file {} already in progress.'.format(local_file)
+
+        self._pending_publish.add(remote_name)
 
         # send out the request packet
-        self._write_message(self._server_sock, {
+        await self._write_message(self._server_writer, {
             'type': MessageType.REQUEST_PUBLISH,
-            'filename': filename,
-            'fileinfo': {'size': os.stat(file).st_size},
-            'chunknum': math.ceil(os.stat(file).st_size / Peer._CHUNK_SIZE)
+            'filename': remote_name,
+            'fileinfo': {'size': os.stat(local_file).st_size},
+            'chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
         })
 
-        # queue will block until the result is ready
-        is_success, message = self._publish_results[filename].get()
-        if is_success:
-            self._file_map[filename] = file
-            logger.info('File {} published on server with name {}'.format(file, filename))
-        else:
-            logger.info('File {} failed to publish, {}'.format(file, message))
+        message = await self._read_message(self._server_reader)
+        assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
+        is_success, message = message['result'], message['message']
 
-        # remove result
-        with self._publish_lock:
-            del self._publish_results[filename]
+        if is_success:
+            self._file_map[remote_name] = local_file
+            logger.info('File {} published on server with name {}'.format(local_file, remote_name))
+        else:
+            logger.info('File {} failed to publish, {}'.format(local_file, message))
+
+        self._pending_publish.remove(remote_name)
         return is_success, message
 
-    def list_file(self):
-        self._write_message(self._server_sock, {
+    async def list_file(self):
+        await self._write_message(self._server_writer, {
             'type': MessageType.REQUEST_FILE_LIST,
         })
-        with self._file_list_lock:
-            self._file_list = self._file_list_result.get()
-        return self._file_list
+        message = await self._read_message(self._server_reader)
+        assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
+        return message['file_list']
 
-    def download(self, file, destination, reporthook=None):
-        with self._file_list_lock:
-            if self._file_list is None or file not in self._file_list.keys():
-                return False, 'Requested file {} does not exist, try list_file?'.format(file)
-        with self._download_lock:
-            if file in self._download_results:
-                return False, 'Download {} already in progress.'.format(file)
-            self._download_results[file] = Queue()
+    async def download(self, file, destination, reporthook=None):
+        # request for file list
+        file_list = await self.list_file()
+        if file not in file_list:
+            return False, 'Requested file {} does not exist, try list_file?'.format(file)
 
-        self._write_message(self._server_sock, {
+        await self._write_message(self._server_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
             'filename': file
         })
-        # wait until reply is ready
-        fileinfo, chunkinfo = self._download_results[file].get()
-        totalchunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
+
+        message = await self._read_message(self._server_reader)
+        assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
+        fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
+
+        totalchunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
 
         # TODO: decide which peer to request chunk
         peers = {}
-        try:
-            for chunknum in range(totalchunknum):
-                for peer_address, possessed_chunks in chunkinfo.items():
-                    if chunknum in possessed_chunks:
-                        if peer_address not in peers:
-                            # peer_address is a string, since JSON requires keys being strings
-                            peers[peer_address] = self._connect(json.loads(peer_address))
-                        # write the message to ask the chunk
-                        self._write_message(peers[peer_address], {
-                            'type': MessageType.PEER_REQUEST_CHUNK,
-                            'filename': file,
-                            'chunknum': chunknum
-                        })
-                        break
+        # TODO: make it parallel
+        for chunknum in range(totalchunknum):
+            for peer_address, possessed_chunks in chunkinfo.items():
+                if chunknum in possessed_chunks:
+                    if peer_address not in peers:
+                        # peer_address is a string, since JSON requires keys being strings
+                        peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
+                    # write the message to ask the chunk
+                    await self._write_message(peers[peer_address][1], {
+                        'type': MessageType.PEER_REQUEST_CHUNK,
+                        'filename': file,
+                        'chunknum': chunknum
+                    })
+                    break
 
             # TODO: update chunkinfo after receiving each chunk
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
                 for i in range(totalchunknum):
-                    number, data, digest = self._download_results[file].get()
-                    raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
-                    # TODO: handle if corrupted
-                    if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                        assert False
-                    dest_file.seek(number * Peer._CHUNK_SIZE, 0)
-                    dest_file.write(raw_data)
-                    dest_file.flush()
-                    # send request chunk register to server
-                    self._write_message(self._server_sock, {
-                        'type': MessageType.REQUEST_CHUNK_REGISTER,
-                        'filename': file,
-                        'chunknum': number
-                    })
-                    if reporthook:
-                        reporthook(i + 1, Peer._CHUNK_SIZE, fileinfo['size'])
-                    logger.debug('Got {}\'s chunk # {}'.format(file, number))
+                    for address, (reader, _) in peers:
+                        assert isinstance(reader, asyncio.StreamReader)
+                        while not reader.at_eof():
+                            message = await self._read_message(reader)
+                            number, data, digest = message['chunknum'], message['data'], message['digest']
+                            raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
+                            # TODO: handle if corrupted
+                            if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
+                                assert False
+                            dest_file.seek(number * Peer._CHUNK_SIZE, 0)
+                            dest_file.write(raw_data)
+                            dest_file.flush()
+                            # send request chunk register to server
+                            await self._write_message(self._server_writer, {
+                                'type': MessageType.REQUEST_CHUNK_REGISTER,
+                                'filename': file,
+                                'chunknum': number
+                            })
+                            if reporthook:
+                                reporthook(i + 1, Peer._CHUNK_SIZE, fileinfo['size'])
+                            logger.debug('Got {}\'s chunk # {}'.format(file, number))
 
             # change the temp file into the actual file
             os.rename(destination + '.temp', destination)
 
-            with self._download_lock:
-                del self._download_results[file]
-
-        finally:
-            # close the sockets no matter what happens
-            for _, client in peers.items():
-                client.close()
+            # close the connections
+            for _, (_, writer) in peers:
+                writer.close()
+                await writer.wait_closed()
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
-    def _process_message(self, client, message):
-        if message['type'] == MessageType.REPLY_REGISTER:
-            logger.info('Successfully registered.')
-        elif message['type'] == MessageType.REPLY_PUBLISH:
-            self._publish_results[message['filename']].put((message['result'], message['message']))
-        elif message['type'] == MessageType.REPLY_FILE_LIST:
-            self._file_list_result.put(message['file_list'])
-        elif message['type'] == MessageType.REPLY_FILE_LOCATION:
-            self._download_results[message['filename']].put((message['fileinfo'], message['chunkinfo']))
-        elif message['type'] == MessageType.PEER_REQUEST_CHUNK:
-            assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])
-            local_file = self._file_map[message['filename']]
-            with open(local_file, 'rb') as f:
-                f.seek(message['chunknum'] * Peer._CHUNK_SIZE, 0)
-                raw_data = f.read(Peer._CHUNK_SIZE)
-            self._write_message(client, {
-                'type': MessageType.PEER_REPLY_CHUNK,
-                'filename': message['filename'],
-                'chunknum': message['chunknum'],
-                'data': pybase64.b64encode(raw_data).decode('utf-8'),
-                'digest': Peer._HASH_FUNC(raw_data).hexdigest()
-            })
-        elif message['type'] == MessageType.PEER_REPLY_CHUNK:
-            self._download_results[message['filename']].put((message['chunknum'], message['data'], message['digest']))
-        else:
-            logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
-
-    def _client_closed(self, client):
-        # TODO: hanlde client closed unexpectedly
-        assert isinstance(client, socket.socket)
-        if client is self._server_sock:
-            logger.error('Server {} closed unexpectedly'.format(client.getpeername()))
-            exit(1)
+    async def _process_connection(self, reader, writer):
+        assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
+        while not reader.at_eof():
+            message = await self._read_message(reader)
+            message_type = MessageType(message['type'])
+            if message_type == MessageType.PEER_REQUEST_CHUNK:
+                assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])
+                local_file = self._file_map[message['filename']]
+                with open(local_file, 'rb') as f:
+                    f.seek(message['chunknum'] * Peer._CHUNK_SIZE, 0)
+                    raw_data = f.read(Peer._CHUNK_SIZE)
+                await self._write_message(writer, {
+                    'type': MessageType.PEER_REPLY_CHUNK,
+                    'filename': message['filename'],
+                    'chunknum': message['chunknum'],
+                    'data': pybase64.b64encode(raw_data).decode('utf-8'),
+                    'digest': Peer._HASH_FUNC(raw_data).hexdigest()
+                })
+            else:
+                logger.error('Undefined message with type {}, full message: {}'.format(message['type'], message))
