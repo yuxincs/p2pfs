@@ -5,7 +5,7 @@ import argparse
 import logging
 import coloredlogs
 
-coloredlogs.install(level='ERROR', fmt='%(levelname)s:%(module)s[0x%(thread)x]: %(message)s')
+coloredlogs.install(level='ERROR', fmt='%(levelname)s:%(module)s: %(message)s')
 
 
 def main():

@@ -20,14 +20,12 @@ setup(
         'Topic :: Networking',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7'
     ],
     keywords='P2P, Networking',
     packages=find_packages(exclude=['tests']),
-    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'tabulate', 'tqdm'],
+    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'tabulate', 'tqdm', 'uvloop', 'asynccmd'],
     extras_require={
         'test': ['pytest-cov', 'pytest', 'coverage'],
     },
