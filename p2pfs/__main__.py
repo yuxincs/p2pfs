@@ -1,9 +1,9 @@
-from p2pfs.core.peer import Peer
-from p2pfs.core.tracker import Tracker
-from p2pfs.ui.terminal import TrackerTerminal, PeerTerminal
 import argparse
 import logging
 import coloredlogs
+from p2pfs.core.peer import Peer
+from p2pfs.core.tracker import Tracker
+from p2pfs.ui.terminal import TrackerTerminal, PeerTerminal
 
 coloredlogs.install(level='ERROR', fmt='%(levelname)s:%(module)s: %(message)s')
 

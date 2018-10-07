@@ -1,14 +1,11 @@
-from p2pfs.core.server import MessageServer, MessageType
-import socket
 import logging
 import os.path
-import threading
-from queue import Queue
 import math
-import pybase64
 import json
 import hashlib
 import asyncio
+import pybase64
+from p2pfs.core.server import MessageServer, MessageType
 logger = logging.getLogger(__name__)
 
 

@@ -2,9 +2,9 @@ from abc import abstractmethod
 import json
 import struct
 import logging
-import zstandard as zstd
 import asyncio
 from enum import Enum, auto
+import zstandard as zstd
 logger = logging.getLogger(__name__)
 
 

@@ -1,8 +1,8 @@
 import os
 import hashlib
 import asyncio
-from p2pfs import Peer, Tracker
 import uvloop
+from p2pfs import Peer, Tracker
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
