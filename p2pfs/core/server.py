@@ -39,18 +39,21 @@ class MessageServer:
 
         # manage the connections
         self._writers = set()
+        self._server = None
 
     async def start(self):
         logger.info('Start listening on {}'.format(self._server_address))
         # start server
-        server = await asyncio.start_server(self.__new_connection, *self._server_address, loop=self._loop)
+        self._server = await asyncio.start_server(self.__new_connection, *self._server_address, loop=self._loop)
         # update server address, only get the first 2 elements because under IPv6 the return value contains 4 elements
         # see https://docs.python.org/3.7/library/socket.html#socket-families
-        self._server_address = server.sockets[0].getsockname()[:2]
+        self._server_address = self._server.sockets[0].getsockname()[:2]
         return True
 
     async def stop(self):
-        for writer in self._writers:
+        self._server.close()
+        await self._server.wait_closed()
+        for writer in set(self._writers):
             writer.close()
             await writer.wait_close()
 
