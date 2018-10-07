@@ -55,7 +55,7 @@ class MessageServer:
         await self._server.wait_closed()
         for writer in set(self._writers):
             writer.close()
-            await writer.wait_close()
+            await writer.wait_closed()
 
     @staticmethod
     def _message_log(message):
