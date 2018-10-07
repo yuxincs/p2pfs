@@ -1,9 +1,8 @@
-sudo: false
+sudo: true
 
 language: python
-
-python:
-  - "3.6"
+dist: xenial
+python: "3.7"
 
 cache: pip
 
@@ -16,7 +15,9 @@ script:
 jobs:
   include:
     - stage: codecov
-      python: 3.6
+      python: 3.7
+      sudo: true
+      dist: xenial
       script:
         - tox
         - pip install codecov && codecov
