@@ -155,7 +155,7 @@ class Peer(MessageServer):
             os.rename(destination + '.temp', destination)
 
             # close the connections
-            for _, (_, writer) in peers:
+            for _, (_, writer) in peers.items():
                 writer.close()
                 await writer.wait_closed()
 
