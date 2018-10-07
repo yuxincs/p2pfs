@@ -25,6 +25,7 @@ class Tracker(MessageServer):
 
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
+        logger.info('New connection from {}'.format(writer.get_extra_info('peername')))
         self._peers[writer] = None
         while not reader.at_eof():
             message = await self._read_message(reader)
