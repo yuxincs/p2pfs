@@ -132,6 +132,8 @@ class Peer(MessageServer):
                     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
                         message = task.result()
+                        if message is None:
+                            continue
                         finished += 1
                         number, data, digest = message['chunknum'], message['data'], message['digest']
                         raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
@@ -165,6 +167,8 @@ class Peer(MessageServer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
         while not reader.at_eof():
             message = await self._read_message(reader)
+            if message is None:
+                break
             message_type = MessageType(message['type'])
             if message_type == MessageType.PEER_REQUEST_CHUNK:
                 assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])

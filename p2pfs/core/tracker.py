@@ -29,6 +29,8 @@ class Tracker(MessageServer):
         self._peers[writer] = None
         while not reader.at_eof():
             message = await self._read_message(reader)
+            if message is None:
+                break
             message_type = MessageType(message['type'])
             if message_type == MessageType.REQUEST_REGISTER:
                 # peer_address is a string, since JSON requires keys being strings

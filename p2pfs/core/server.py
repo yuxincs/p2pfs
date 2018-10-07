@@ -63,9 +63,13 @@ class MessageServer:
     async def _read_message(self, reader):
         assert isinstance(reader, asyncio.StreamReader)
         # receive length header -> decompress (bytes) -> decode to str (str) -> json load (dict)
-        raw_msg_len = await reader.readexactly(4)
-        msglen = struct.unpack('>I', raw_msg_len)[0]
-        raw_msg = await reader.readexactly(msglen)
+        try:
+            raw_msg_len = await reader.readexactly(4)
+            msglen = struct.unpack('>I', raw_msg_len)[0]
+            raw_msg = await reader.readexactly(msglen)
+        except asyncio.IncompleteReadError:
+            return None
+
         msg = json.loads(self._decompressor.decompress(raw_msg).decode('utf-8'))
         logger.debug('Message received {}'.format(self._message_log(msg)))
         return msg
