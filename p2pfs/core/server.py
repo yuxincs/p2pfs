@@ -52,7 +52,7 @@ class MessageServer:
             await writer.wait_close()
 
     @staticmethod
-    def __message_log(message):
+    def _message_log(message):
         log_message = {key: message[key] for key in message if key != 'data'}
         log_message['type'] = MessageType(message['type']).name
         return log_message
@@ -64,12 +64,12 @@ class MessageServer:
         msglen = struct.unpack('>I', raw_msg_len)[0]
         raw_msg = await reader.readexactly(msglen)
         msg = json.loads(self._decompressor.decompress(raw_msg).decode('utf-8'))
-        logger.debug('Message received {}'.format(self.__message_log(msg)))
+        logger.debug('Message received {}'.format(self._message_log(msg)))
         return msg
 
     async def _write_message(self, writer, message):
         assert isinstance(writer, asyncio.StreamWriter)
-        logger.debug('Writing {}'.format(self.__message_log(message)))
+        logger.debug('Writing {}'.format(self._message_log(message)))
         # use value of enum since Enum is not JSON serializable
         message['type'] = message['type'].value
         # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
