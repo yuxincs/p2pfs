@@ -1,5 +1,4 @@
 from p2pfs.core.server import MessageServer, MessageType
-import socket
 import logging
 import json
 import asyncio
