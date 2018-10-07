@@ -67,7 +67,7 @@ class MessageServer:
         logger.debug('Message received {}'.format(self.__message_log(msg)))
         return msg
 
-    async def _write_message(self, message, writer):
+    async def _write_message(self, writer, message):
         assert isinstance(writer, asyncio.StreamWriter)
         logger.debug('Writing {}'.format(self.__message_log(message)))
         # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
