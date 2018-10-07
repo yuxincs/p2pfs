@@ -177,5 +177,4 @@ class Peer(MessageServer):
                     'digest': Peer._HASH_FUNC(raw_data).hexdigest()
                 })
             else:
-                logger.error('Undefined message with type {}, full message: {}'
-                             .format(message['type'], self._message_log(message)))
+                logger.error('Undefined message: {}'.format(self._message_log(message)))
