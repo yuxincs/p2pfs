@@ -106,6 +106,7 @@ class Peer(MessageServer):
         totalchunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
 
         # TODO: decide which peer to request chunk
+        # peer_address -> (reader, writer)
         peers = {}
         # TODO: make it parallel
         for chunknum in range(totalchunknum):
