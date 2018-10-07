@@ -32,6 +32,9 @@ class Tracker(MessageServer):
             if message_type == MessageType.REQUEST_REGISTER:
                 # peer_address is a string, since JSON requires keys being strings
                 self._peers[writer] = json.dumps(message['address'])
+                await self._write_message(writer, {
+                    'type': MessageType.REPLY_REGISTER
+                })
                 logger.debug(self._peers.values())
             elif message_type == MessageType.REQUEST_PUBLISH:
                 if message['filename'] in self._file_list:
