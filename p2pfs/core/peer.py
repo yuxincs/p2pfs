@@ -18,8 +18,8 @@ class Peer(MessageServer):
 
     def __init__(self, host, port, server, server_port, loop=None):
         super().__init__(host, port, loop=loop)
-        self._server_config = (server, server_port)
-        self._server_reader, self._server_writer = None, None
+        self._tracker_address = (server, server_port)
+        self._tracker_reader, self._tracker_writer = None, None
 
         # (remote filename) <-> (local filename)
         self._file_map = {}
@@ -29,8 +29,8 @@ class Peer(MessageServer):
     async def start(self):
         # connect to server
         try:
-            self._server_reader, self._server_writer = \
-                await asyncio.open_connection(*self._server_config, loop=self._loop)
+            self._tracker_reader, self._tracker_writer = \
+                await asyncio.open_connection(*self._tracker_address, loop=self._loop)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
             return False
@@ -38,11 +38,11 @@ class Peer(MessageServer):
         await super().start()
         # send out register message
         logger.info('Requesting to register')
-        await self._write_message(self._server_writer, {
+        await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_REGISTER,
-            'address': self._server_config
+            'address': self._server_address
         })
-        message = await self._read_message(self._server_reader)
+        message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_REGISTER
         logger.info('Successfully registered.')
         return True
@@ -59,14 +59,14 @@ class Peer(MessageServer):
         self._pending_publish.add(remote_name)
 
         # send out the request packet
-        await self._write_message(self._server_writer, {
+        await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_PUBLISH,
             'filename': remote_name,
             'fileinfo': {'size': os.stat(local_file).st_size},
             'chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
         })
 
-        message = await self._read_message(self._server_reader)
+        message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
         is_success, message = message['result'], message['message']
 
@@ -80,10 +80,10 @@ class Peer(MessageServer):
         return is_success, message
 
     async def list_file(self):
-        await self._write_message(self._server_writer, {
+        await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LIST,
         })
-        message = await self._read_message(self._server_reader)
+        message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
         return message['file_list']
 
@@ -93,12 +93,12 @@ class Peer(MessageServer):
         if file not in file_list:
             return False, 'Requested file {} does not exist, try list_file?'.format(file)
 
-        await self._write_message(self._server_writer, {
+        await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
             'filename': file
         })
 
-        message = await self._read_message(self._server_reader)
+        message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
         fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
@@ -139,7 +139,7 @@ class Peer(MessageServer):
                             dest_file.write(raw_data)
                             dest_file.flush()
                             # send request chunk register to server
-                            await self._write_message(self._server_writer, {
+                            await self._write_message(self._tracker_writer, {
                                 'type': MessageType.REQUEST_CHUNK_REGISTER,
                                 'filename': file,
                                 'chunknum': number
