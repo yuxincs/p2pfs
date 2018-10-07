@@ -1,11 +1,14 @@
+import asyncio
 import argparse
 import logging
 import coloredlogs
+import uvloop
 from p2pfs.core.peer import Peer
 from p2pfs.core.tracker import Tracker
 from p2pfs.ui.terminal import TrackerTerminal, PeerTerminal
 
 coloredlogs.install(level='ERROR', fmt='%(levelname)s:%(module)s: %(message)s')
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 def main():
