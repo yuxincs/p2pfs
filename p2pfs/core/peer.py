@@ -126,7 +126,7 @@ class Peer(MessageServer):
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
                 for i in range(totalchunknum):
-                    for address, (reader, _) in peers:
+                    for address, (reader, _) in peers.items():
                         assert isinstance(reader, asyncio.StreamReader)
                         while not reader.at_eof():
                             message = await self._read_message(reader)
