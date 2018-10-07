@@ -80,7 +80,8 @@ class Tracker(MessageServer):
                 else:
                     self._chunkinfo[message['filename']][peer_address] = [message['chunknum']]
             else:
-                logger.error('Undefined message with {} type, full packet: {}'.format(message['type'], message))
+                logger.error('Undefined message with {} type, full packet: {}'
+                             .format(message['type'], self._message_log(message)))
 
         writer.close()
         del self._peers[writer]
