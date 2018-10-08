@@ -76,7 +76,7 @@ def test_publish_large():
     is_success, _ = loop.run_until_complete(peers[1].publish(TEST_LARGE_FILE))
     assert is_success
     file_list = tracker.file_list()
-    assert TEST_LARGE_FILE in file_list in file_list
+    assert TEST_LARGE_FILE in file_list
     assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
     file_list = loop.run_until_complete(peers[0].list_file())
     assert TEST_LARGE_FILE in file_list
