@@ -21,7 +21,7 @@ class TrackerTerminal(aiocmd.Cmd):
         for filename, fileinfo in file_list_dict.items():
             if table.column_count == 0:
                 table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-                table.append_row((filename, ) + tuple(fileinfo.values()))
+            table.append_row((filename, ) + tuple(fileinfo.values()))
         print(table)
 
     async def do_list_peers(self, arg):
@@ -29,7 +29,8 @@ class TrackerTerminal(aiocmd.Cmd):
         table.row_separator_char = ''
         table.column_headers = ['Peer Address']
         for peer in self._tracker.peers():
-            table.append_row(peer)
+            table.append_row([peer])
+        print(table)
 
     async def do_list_chunkinfo(self, arg):
         # TODO: pretty print chunk info
@@ -62,7 +63,7 @@ class PeerTerminal(aiocmd.Cmd):
         for filename, fileinfo in file_list_dict.items():
             if table.column_count == 0:
                 table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-                table.append_row((filename,) + tuple(fileinfo.values()))
+            table.append_row((filename,) + tuple(fileinfo.values()))
         print(table)
 
     async def do_download(self, arg):
