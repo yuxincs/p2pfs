@@ -1,5 +1,4 @@
-import asyncio
-from tabulate import tabulate
+from beautifultable import BeautifulTable
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
 import p2pfs.ui.aiocmd as aiocmd
@@ -16,19 +15,24 @@ class TrackerTerminal(aiocmd.Cmd):
 
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
-        file_list = []
-        headers = ['Filename']
-        for filename, fileinfo in file_list_dict.items():
-            if len(headers) == 1:
-                headers.extend(tuple(map(lambda x: x.capitalize(), tuple(fileinfo.keys()))))
-            file_list.append((filename, ) + tuple(fileinfo.values()))
+        table = BeautifulTable()
+        table.row_separator_char = ''
 
-        print(tabulate(file_list, headers=headers))
+        for filename, fileinfo in file_list_dict.items():
+            if table.column_count == 0:
+                table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+                table.append_row((filename, ) + tuple(fileinfo.values()))
+        print(table)
 
     async def do_list_peers(self, arg):
-        print(self._tracker.peers())
+        table = BeautifulTable()
+        table.row_separator_char = ''
+        table.column_headers = ['Peer Address']
+        for peer in self._tracker.peers():
+            table.append_row(peer)
 
     async def do_list_chunkinfo(self, arg):
+        # TODO: pretty print chunk info
         print(self._tracker.chunkinfo())
 
     async def do_exit(self, arg):
@@ -52,14 +56,14 @@ class PeerTerminal(aiocmd.Cmd):
 
     async def do_list_files(self, arg):
         file_list_dict = await self._peer.list_file()
-        file_list = []
-        headers = ['Filename']
-        for filename, fileinfo in file_list_dict.items():
-            if len(headers) == 1:
-                headers.extend(tuple(map(lambda x: x.capitalize(), tuple(fileinfo.keys()))))
-            file_list.append((filename,) + tuple(fileinfo.values()))
+        table = BeautifulTable()
+        table.row_separator_char = ''
 
-        print(tabulate(file_list, headers=headers))
+        for filename, fileinfo in file_list_dict.items():
+            if table.column_count == 0:
+                table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+                table.append_row((filename,) + tuple(fileinfo.values()))
+        print(table)
 
     async def do_download(self, arg):
         filename, destination, *_ = arg.split(' ')

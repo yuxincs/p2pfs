@@ -25,7 +25,7 @@ setup(
     ],
     keywords='P2P, Networking',
     packages=find_packages(exclude=['tests']),
-    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'tabulate', 'tqdm', 'uvloop', 'aioconsole'],
+    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'beautifultable', 'tqdm', 'uvloop', 'aioconsole'],
     extras_require={
         'test': ['pytest-cov', 'pytest', 'coverage'],
     },
