@@ -45,6 +45,16 @@ def test_start():
     assert tracker_started and all(peers_started)
 
 
+def test_publish_refuse():
+    with open('test_publish_refuse', 'wb') as fout:
+        fout.write(os.urandom(100))
+
+    is_success, _ = loop.run_until_complete(peers[0].publish('test_publish_refuse'))
+    assert is_success
+    is_success, _ = loop.run_until_complete(peers[0].publish('test_publish_refuse'))
+    assert not is_success
+
+
 def test_publish_small():
     # peer1 publish small file and peer2 downloads it
     is_success, _ = loop.run_until_complete(peers[0].publish(TEST_SMALL_FILE))
