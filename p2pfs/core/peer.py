@@ -100,13 +100,13 @@ class Peer(MessageServer):
         fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
         logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
 
-        totalchunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
+        total_chunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
 
         # TODO: decide which peer to request chunk
         # peer_address -> (reader, writer)
         peers = {}
         # TODO: make it parallel
-        for chunknum in range(totalchunknum):
+        for chunknum in range(total_chunknum):
             for peer_address, possessed_chunks in chunkinfo.items():
                 if chunknum in possessed_chunks:
                     if peer_address not in peers:
@@ -126,7 +126,7 @@ class Peer(MessageServer):
         with open(destination + '.temp', 'wb') as dest_file:
             self._file_map[file] = destination
             finished = 0
-            while finished < totalchunknum:
+            while finished < total_chunknum:
                 done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
                 for task in done:
                     message = task.result()
