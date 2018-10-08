@@ -47,7 +47,8 @@ def test_start():
 
 def test_publish_small():
     # peer1 publish small file and peer2 downloads it
-    loop.run_until_complete(peers[0].publish(TEST_SMALL_FILE))
+    is_success, _ = loop.run_until_complete(peers[0].publish(TEST_SMALL_FILE))
+    assert is_success
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
@@ -72,7 +73,8 @@ def test_download_small():
 
 def test_publish_large():
     # publish big file
-    loop.run_until_complete(peers[1].publish(TEST_LARGE_FILE))
+    is_success, _ = loop.run_until_complete(peers[1].publish(TEST_LARGE_FILE))
+    assert is_success
     file_list = tracker.file_list()
     assert TEST_LARGE_FILE in file_list in file_list
     assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
