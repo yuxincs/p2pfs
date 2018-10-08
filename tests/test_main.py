@@ -3,8 +3,20 @@ import hashlib
 import asyncio
 import uvloop
 from p2pfs import Peer, Tracker
+from tests.conftest import TEST_SMALL_FILE, TEST_LARGE_FILE
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+loop = asyncio.get_event_loop()
+peers = tuple(Peer('localhost', 0, 'localhost', 8880) for _ in range(3))
+tracker = Tracker('localhost', 8880)
+
+
+def teardown_module(module):
+    """ stop the peers and tracker"""
+    loop.run_until_complete(asyncio.wait({peer.stop() for peer in peers}))
+    loop.run_until_complete(tracker.stop())
+    loop.close()
 
 
 def fmd5(fname):
@@ -26,16 +38,6 @@ def test_server_refused():
 
 
 def test_main():
-    peers = tuple(Peer('localhost', 0, 'localhost', 8880) for _ in range(3))
-    tracker = Tracker('localhost', 8880)
-    with open('test_small_file', 'wb') as fout:
-        fout.write(os.urandom(1000))
-
-    with open('test_big_file', 'wb') as fout:
-        # write 500MB random data into the file
-        for _ in range(500):
-            fout.write(os.urandom(1000 * 1000))
-    loop = asyncio.get_event_loop()
     tracker_started = loop.run_until_complete(tracker.start())
     # spawn peers concurrently
     peers_started = \
@@ -43,12 +45,12 @@ def test_main():
     assert tracker_started and all(peers_started)
 
     # peer1 publish small file and peer2 downloads it
-    loop.run_until_complete(peers[0].publish('test_small_file'))
+    loop.run_until_complete(peers[0].publish(TEST_SMALL_FILE))
     file_list = tracker.file_list()
-    assert 'test_small_file' in file_list
-    assert file_list['test_small_file']['size'] == 1000
+    assert TEST_SMALL_FILE in file_list
+    assert file_list[TEST_SMALL_FILE]['size'] == 1000
     file_list = loop.run_until_complete(peers[1].list_file())
-    assert 'test_small_file' in file_list
+    assert TEST_SMALL_FILE in file_list
 
     def reporthook(chunk_num, chunk_size, total_size):
         reporthook.value = (chunk_num, total_size)
@@ -81,11 +83,6 @@ def test_main():
     assert result is True
     assert os.path.exists('downloaded_big_file_from_multiple_peers')
     assert fmd5('test_big_file') == fmd5('downloaded_big_file_from_multiple_peers')
-    os.remove('test_small_file')
-    os.remove('test_big_file')
     os.remove('downloaded_small_file')
     os.remove('downloaded_big_file')
     os.remove('downloaded_big_file_from_multiple_peers')
-    loop.run_until_complete(asyncio.wait({peer.stop() for peer in peers}))
-    loop.run_until_complete(tracker.stop())
-    loop.close()
