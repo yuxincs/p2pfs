@@ -72,12 +72,12 @@ def test_download_small():
 
 def test_publish_large():
     # publish big file
-    loop.run_until_complete(peers[1].publish('test_big_file'))
+    loop.run_until_complete(peers[1].publish(TEST_LARGE_FILE))
     file_list = tracker.file_list()
     assert TEST_LARGE_FILE in file_list in file_list
-    assert file_list['test_big_file']['size'] == 500 * 1000 * 1000
+    assert file_list[TEST_LARGE_FILE]['size'] == 500 * 1000 * 1000
     file_list = loop.run_until_complete(peers[0].list_file())
-    assert 'test_big_file' in file_list and 'test_small_file' in file_list
+    assert TEST_LARGE_FILE in file_list
 
 
 def test_download_large_single():
@@ -94,6 +94,6 @@ def test_download_large_multi():
     result, msg = loop.run_until_complete(peers[2].download(TEST_LARGE_FILE,
                                                             'downloaded_'+ TEST_LARGE_FILE + '_from_multiple_peers'))
     assert result is True
-    assert os.path.exists('downloaded_big_file_from_multiple_peers')
-    assert fmd5('test_big_file') == fmd5('downloaded_' + TEST_LARGE_FILE + '_from_multiple_peers')
+    assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_from_multiple_peers')
+    assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_from_multiple_peers')
     os.remove('downloaded_' + TEST_LARGE_FILE + '_from_multiple_peers')
