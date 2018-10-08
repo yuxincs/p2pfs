@@ -3,7 +3,7 @@ import hashlib
 import asyncio
 import uvloop
 from p2pfs import Peer, Tracker
-from tests.conftest import TEST_SMALL_FILE, TEST_LARGE_FILE
+from tests.conftest import TEST_SMALL_FILE, TEST_LARGE_FILE, TEST_SMALL_FILE_SIZE, TEST_LARGE_FILE_SIZE
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -50,7 +50,7 @@ def test_publish_small():
     loop.run_until_complete(peers[0].publish(TEST_SMALL_FILE))
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
-    assert file_list[TEST_SMALL_FILE]['size'] == 1000
+    assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
     file_list = loop.run_until_complete(peers[1].list_file())
     assert TEST_SMALL_FILE in file_list
 
@@ -75,7 +75,7 @@ def test_publish_large():
     loop.run_until_complete(peers[1].publish(TEST_LARGE_FILE))
     file_list = tracker.file_list()
     assert TEST_LARGE_FILE in file_list in file_list
-    assert file_list[TEST_LARGE_FILE]['size'] == 500 * 1000 * 1000
+    assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
     file_list = loop.run_until_complete(peers[0].list_file())
     assert TEST_LARGE_FILE in file_list
 

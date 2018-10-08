@@ -3,6 +3,8 @@ import os
 
 TEST_SMALL_FILE = 'test_small_file'
 TEST_LARGE_FILE = 'test_large_file'
+TEST_SMALL_FILE_SIZE = 1000
+TEST_LARGE_FILE_SIZE = 500 * 1000 * 1000
 
 
 @pytest.fixture(scope='session', autouse=True)
