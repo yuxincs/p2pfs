@@ -7,7 +7,7 @@ import p2pfs.ui.aiocmd as aiocmd
 
 class TrackerTerminal(aiocmd.Cmd):
     INTRO = 'Welcome to \033[1mTracker\033[0m terminal.    Type help or ? to list commands.\n'
-    PROMPT = 'tracker > '
+    PROMPT = '\033[1mTracker>\033[0m '
 
     def __init__(self, tracker):
         assert isinstance(tracker, Tracker)
@@ -38,7 +38,7 @@ class TrackerTerminal(aiocmd.Cmd):
 
 class PeerTerminal(aiocmd.Cmd):
     INTRO = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
-    PROMPT = 'peer > '
+    PROMPT = '\033[1mPeer>\033[0m '
 
     def __init__(self, peer):
         assert isinstance(peer, Peer)
