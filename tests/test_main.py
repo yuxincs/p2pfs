@@ -39,7 +39,7 @@ def test_main():
     tracker_started = loop.run_until_complete(tracker.start())
     # spawn peers concurrently
     peers_started = \
-        loop.run_until_complete(asyncio.gather([peer.start() for peer in peers]))
+        loop.run_until_complete(asyncio.gather(*[peer.start() for peer in peers]))
     assert tracker_started and all(peers_started)
 
     # peer1 publish small file and peer2 downloads it
