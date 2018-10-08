@@ -20,18 +20,21 @@ def main():
     arg_parser.add_argument('server_port', metavar='SERVER_PORT', type=int, nargs='?', default=8888)
     results = arg_parser.parse_args()
 
+    loop = asyncio.get_event_loop()
+    terminal = None
     if results.option[0] == 'server':
         tracker = Tracker(results.host, results.host_port)
-        tracker.start()
+        loop.run_until_complete(tracker.start())
         terminal = TrackerTerminal(tracker)
-        terminal.cmdloop()
     elif results.option[0] == 'peer':
         peer = Peer(results.host, results.host_port, results.server, results.server_port)
-        peer.start()
+        loop.run_until_complete(peer.start())
         terminal = PeerTerminal(peer)
-        terminal.cmdloop()
     else:
         logging.error('Option must either be \'server\' or \'peer\'')
+
+    loop.run_until_complete(terminal.cmdloop())
+    loop.close()
 
 
 if __name__ == '__main__':
