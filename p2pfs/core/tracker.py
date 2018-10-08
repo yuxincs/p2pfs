@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class Tracker(MessageServer):
     def __init__(self, host, port):
         super().__init__(host, port)
+        # {writer -> address}
         self._peers = {}
         # {filename -> fileinfo}
         self._file_list = {}
