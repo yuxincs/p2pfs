@@ -13,7 +13,7 @@ peers = tuple(Peer('localhost', 0, 'localhost', 8880) for _ in range(3))
 peer_terminals = tuple(PeerTerminal(peer) for peer in peers)
 
 
-def steup_module(module):
+def setup_module(module):
     tracker_started = loop.run_until_complete(tracker.start())
     # spawn peers concurrently
     peers_started = \
