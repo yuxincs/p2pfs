@@ -32,9 +32,12 @@ def main():
         terminal = PeerTerminal(peer)
     else:
         logging.error('Option must either be \'server\' or \'peer\'')
-
-    loop.run_until_complete(terminal.cmdloop())
-    loop.close()
+    try:
+        loop.run_until_complete(terminal.cmdloop())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        loop.close()
 
 
 if __name__ == '__main__':
