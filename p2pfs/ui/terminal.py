@@ -1,19 +1,20 @@
-import cmd
+import asyncio
 from tabulate import tabulate
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
+import p2pfs.ui.aiocmd as aiocmd
 
 
-class TrackerTerminal(cmd.Cmd):
-    intro = 'Welcome to \033[1mTracker\033[0m terminal.    Type help or ? to list commands.\n'
-    prompt = '(tracker) '
+class TrackerTerminal(aiocmd.Cmd):
+    INTRO = 'Welcome to \033[1mTracker\033[0m terminal.    Type help or ? to list commands.\n'
+    PROMPT = '\033[1mTracker>\033[0m '
 
-    def __init__(self, tracker, completekey='tab', stdin=None, stdout=None):
-        super().__init__(completekey, stdin, stdout)
+    def __init__(self, tracker):
         assert isinstance(tracker, Tracker)
         self._tracker = tracker
+        super().__init__()
 
-    def do_list_files(self, arg):
+    async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
         file_list = []
         headers = ['Filename']
@@ -24,33 +25,33 @@ class TrackerTerminal(cmd.Cmd):
 
         print(tabulate(file_list, headers=headers))
 
-    def do_list_peers(self, arg):
+    async def do_list_peers(self, arg):
         print(self._tracker.peers())
 
-    def do_list_chunkinfo(self, arg):
+    async def do_list_chunkinfo(self, arg):
         print(self._tracker.chunkinfo())
 
-    def do_exit(self, arg):
-        self._tracker.stop()
+    async def do_exit(self, arg):
+        await self._tracker.stop()
         return True
 
 
-class PeerTerminal(cmd.Cmd):
-    intro = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
-    prompt = '(peer) '
+class PeerTerminal(aiocmd.Cmd):
+    INTRO = 'Welcome to \033[1mPeer\033[0m terminal.    Type help or ? to list commands.\n'
+    PROMPT = '\033[1mPeer>\033[0m '
 
-    def __init__(self, peer, completekey='tab', stdin=None, stdout=None):
-        super().__init__(completekey, stdin, stdout)
+    def __init__(self, peer):
         assert isinstance(peer, Peer)
         self._peer = peer
+        super().__init__()
 
-    def do_publish(self, arg):
+    async def do_publish(self, arg):
         arg = arg.split(' ')[0]
-        _, message = self._peer.publish(arg)
+        _, message = await self._peer.publish(arg)
         print(message)
 
-    def do_list_files(self, arg):
-        file_list_dict = self._peer.list_file()
+    async def do_list_files(self, arg):
+        file_list_dict = await self._peer.list_file()
         file_list = []
         headers = ['Filename']
         for filename, fileinfo in file_list_dict.items():
@@ -60,7 +61,7 @@ class PeerTerminal(cmd.Cmd):
 
         print(tabulate(file_list, headers=headers))
 
-    def do_download(self, arg):
+    async def do_download(self, arg):
         filename, destination, *_ = arg.split(' ')
         from tqdm import tqdm
 
@@ -77,9 +78,10 @@ class PeerTerminal(cmd.Cmd):
 
         with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
             hook = tqdm_hook_wrapper(t)
-            _, message = self._peer.download(filename, destination, reporthook=hook)
+            _, message = await self._peer.download(filename, destination, reporthook=hook)
+
         print(message)
 
-    def do_exit(self, arg):
-        self._peer.stop()
+    async def do_exit(self, arg):
+        await self._peer.stop()
         return True
