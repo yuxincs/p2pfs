@@ -99,29 +99,29 @@ async def test_download(unused_tcp_port):
         reporthook.value = (chunk_num, total_size)
 
     # download small file
-    result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE, reporthook=reporthook)
+    is_success, _ = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE, reporthook=reporthook)
     assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
     try:
-        assert result is True
+        assert is_success
         assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
         assert reporthook.value == (1, 1000)
     finally:
         os.remove('downloaded_' + TEST_SMALL_FILE)
 
     # download large file from single source
-    result, msg = await peers[0].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_0')
+    is_success, _ = await peers[0].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_0')
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_0')
     try:
-        assert result is True
+        assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_0')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_0')
 
     # download large file from multiple sources
-    result, msg = await peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2')
+    is_success, _ = await peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2')
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
     try:
-        assert result is True
+        assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_2')
@@ -129,16 +129,16 @@ async def test_download(unused_tcp_port):
     # download large file concurrently
     download_task_1 = peers[3].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_3')
     download_task_2 = peers[4].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_4')
-    (result_1, _), (result_2, _) = await asyncio.gather(download_task_1, download_task_2)
+    (is_success_1, _), (is_success_2, _) = await asyncio.gather(download_task_1, download_task_2)
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_3')
     try:
-        assert result_1 is True
+        assert is_success_1
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_3')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_3')
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_4')
     try:
-        assert result_2 is True
+        assert is_success_2
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_4')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_4')
