@@ -86,13 +86,14 @@ class Tracker(MessageServer):
                 logger.error('Undefined message: {}'.format(self._message_log(message)))
 
         peer_address = self._peers[writer]
+        # iterate over chunkinfo and remove the chunks this peer has
         files_to_remove = []
         for filename, peer_possession_dict in self._chunkinfo.items():
             if peer_address in peer_possession_dict:
                 del self._chunkinfo[filename][peer_address]
                 if len(self._chunkinfo[filename]) == 0:
                     files_to_remove.append(filename)
-
+        # remove file on tracker if no peers have that
         for key in files_to_remove:
             del self._chunkinfo[key]
             del self._file_list[key]
