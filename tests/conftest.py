@@ -3,7 +3,6 @@ import os
 import asyncio
 import hashlib
 import uvloop
-from p2pfs import Tracker, Peer
 
 TEST_SMALL_FILE = 'test_small_file'
 TEST_LARGE_FILE = 'test_large_file'
