@@ -29,6 +29,7 @@ async def test_terminals(unused_tcp_port, capsys):
     await tracker_terminal.do_list_files('')
     out, _ = capsys.readouterr()
     assert TEST_SMALL_FILE in out
+    await peer_terminals[1].do_set_delay('0')
     await peer_terminals[1].do_download(TEST_SMALL_FILE + ' ' + 'downloaded_' + TEST_SMALL_FILE)
     assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
     assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)

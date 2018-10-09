@@ -23,6 +23,8 @@ class Peer(MessageServer):
 
         self._pending_publish = set()
 
+        self._delay = 0
+
     async def start(self):
         # connect to server
         try:
@@ -52,6 +54,9 @@ class Peer(MessageServer):
             # if the connection has been closed
             pass
         await super().stop()
+
+    def set_delay(self, delay):
+        self._delay = 0 if delay is None else delay
 
     async def publish(self, local_file, remote_name=None):
         if not os.path.exists(local_file):
@@ -190,6 +195,9 @@ class Peer(MessageServer):
             message = await self._read_message(reader)
             if message is None:
                 break
+            # artificial delay for peer
+            if self._delay != 0:
+                await asyncio.sleep(self._delay)
             message_type = MessageType(message['type'])
             if message_type == MessageType.PEER_REQUEST_CHUNK:
                 assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])

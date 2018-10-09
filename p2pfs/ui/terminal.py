@@ -55,6 +55,13 @@ class PeerTerminal(aiocmd.Cmd):
         _, message = await self._peer.publish(arg)
         print(message)
 
+    async def do_set_delay(self, arg):
+        arg = arg.split(' ')[0]
+        if arg == '':
+            print('delay is required.')
+        else:
+            self._peer.set_delay(float(arg))
+
     async def do_list_files(self, arg):
         file_list_dict = await self._peer.list_file()
         table = BeautifulTable()
