@@ -174,7 +174,7 @@ async def test_peer_disconnect(unused_tcp_port):
     # stop peer and check the file has been removed
     await peer.stop()
     # return control to the loop for tracker code to run
-    await asyncio.sleep(0)
+    await asyncio.sleep(1)
     assert TEST_SMALL_FILE not in tracker.file_list()
 
     await tracker.stop()
