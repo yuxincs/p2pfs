@@ -77,6 +77,9 @@ class Tracker(MessageServer):
                 })
             elif message_type == MessageType.REQUEST_CHUNK_REGISTER:
                 peer_address = self._peers[writer]
+                if message['filename'] not in self._chunkinfo:
+                    logger.warning('REQUEST_CHUNK_REGISTER with non-existing file.')
+                    continue
                 if peer_address in self._chunkinfo[message['filename']]:
                     if message['chunknum'] not in self._chunkinfo[message['filename']][peer_address]:
                         self._chunkinfo[message['filename']][peer_address].append(message['chunknum'])
