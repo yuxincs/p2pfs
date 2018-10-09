@@ -9,7 +9,7 @@ pytestmark = pytest.mark.asyncio
 
 async def test_terminals(unused_tcp_port, capsys):
     tracker = Tracker('localhost', unused_tcp_port)
-    peers = tuple(Peer('localhost', 0, 'localhost', unused_tcp_port) for _ in range(3))
+    peers = tuple(Peer('localhost', 0, 'localhost', unused_tcp_port) for _ in range(2))
     tracker_started = await tracker.start()
     # spawn peers concurrently
     peers_started = await asyncio.gather(*[peer.start() for peer in peers])
@@ -22,6 +22,7 @@ async def test_terminals(unused_tcp_port, capsys):
     await peer_terminals[0].do_publish(TEST_SMALL_FILE)
     out, _ = capsys.readouterr()
     assert out == 'Success\n'
+    # TODO: fix resource warning for do_list_files(), possibly due to BeautifulTable()
     await peer_terminals[1].do_list_files('')
     out, _ = capsys.readouterr()
     assert TEST_SMALL_FILE in out

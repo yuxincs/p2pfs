@@ -44,6 +44,15 @@ class Peer(MessageServer):
         logger.info('Successfully registered.')
         return True
 
+    async def stop(self):
+        self._tracker_writer.close()
+        try:
+            await self._tracker_writer.wait_closed()
+        except ConnectionResetError:
+            # if the connection has been closed
+            pass
+        await super().stop()
+
     async def publish(self, local_file, remote_name=None):
         if not os.path.exists(local_file):
             return False, 'File {} doesn\'t exist'.format(local_file)
@@ -126,49 +135,50 @@ class Peer(MessageServer):
         # task -> reader
         tasks = {asyncio.ensure_future(self._read_message(reader)): reader for address, (reader, _) in peers.items()}
         # TODO: update chunkinfo after receiving each chunk
-        with open(destination + '.temp', 'wb') as dest_file:
-            self._file_map[file] = destination
-            finished = 0
-            while finished < total_chunknum:
-                done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
-                for task in done:
-                    message = task.result()
-                    if message is None:
-                        # TODO: peer has closed
+        try:
+            with open(destination + '.temp', 'wb') as dest_file:
+                self._file_map[file] = destination
+                finished = 0
+                while finished < total_chunknum:
+                    done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
+                    for task in done:
+                        message = task.result()
+                        if message is None:
+                            # TODO: peer has closed
+                            del tasks[task]
+                            continue
+
+                        # since the task is done, schedule a new task to be run
+                        reader = tasks[task]
+                        tasks[asyncio.ensure_future(self._read_message(reader))] = reader
                         del tasks[task]
-                        continue
 
-                    # since the task is done, schedule a new task to be run
-                    reader = tasks[task]
-                    tasks[asyncio.ensure_future(self._read_message(reader))] = reader
-                    del tasks[task]
-
-                    finished += 1
-                    number, data, digest = message['chunknum'], message['data'], message['digest']
-                    raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
-                    # TODO: handle if corrupted
-                    if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                        assert False
-                    dest_file.seek(number * Peer._CHUNK_SIZE, 0)
-                    dest_file.write(raw_data)
-                    dest_file.flush()
-                    # send request chunk register to server
-                    await self._write_message(self._tracker_writer, {
-                        'type': MessageType.REQUEST_CHUNK_REGISTER,
-                        'filename': file,
-                        'chunknum': number
-                    })
-                    if reporthook:
-                        reporthook(finished, Peer._CHUNK_SIZE, fileinfo['size'])
-                    logger.debug('Got {}\'s chunk # {}'.format(file, number))
-
-            # change the temp file into the actual file
-            os.rename(destination + '.temp', destination)
-
+                        finished += 1
+                        number, data, digest = message['chunknum'], message['data'], message['digest']
+                        raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
+                        # TODO: handle if corrupted
+                        if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
+                            assert False
+                        dest_file.seek(number * Peer._CHUNK_SIZE, 0)
+                        dest_file.write(raw_data)
+                        dest_file.flush()
+                        # send request chunk register to server
+                        await self._write_message(self._tracker_writer, {
+                            'type': MessageType.REQUEST_CHUNK_REGISTER,
+                            'filename': file,
+                            'chunknum': number
+                        })
+                        if reporthook:
+                            reporthook(finished, Peer._CHUNK_SIZE, fileinfo['size'])
+                        logger.debug('Got {}\'s chunk # {}'.format(file, number))
+        finally:
             # close the connections
             for _, (_, writer) in peers.items():
                 writer.close()
                 await writer.wait_closed()
+
+        # change the temp file into the actual file
+        os.rename(destination + '.temp', destination)
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
