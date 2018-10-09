@@ -44,6 +44,15 @@ class Peer(MessageServer):
         logger.info('Successfully registered.')
         return True
 
+    async def stop(self):
+        self._tracker_writer.close()
+        try:
+            await self._tracker_writer.wait_closed()
+        except ConnectionResetError:
+            # if the connection has been closed
+            pass
+        await super().stop()
+
     async def publish(self, local_file, remote_name=None):
         if not os.path.exists(local_file):
             return False, 'File {} doesn\'t exist'.format(local_file)
