@@ -27,7 +27,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=['pybase64', 'zstandard', 'coloredlogs', 'beautifultable', 'tqdm', 'uvloop', 'aioconsole'],
     extras_require={
-        'test': ['pytest-cov', 'pytest', 'coverage'],
+        'test': ['pytest', 'pytest-asyncio', 'pytest-cov', 'coverage'],
     },
     entry_points={
         'console_scripts': [
