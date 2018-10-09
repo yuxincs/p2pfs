@@ -85,6 +85,5 @@ class Tracker(MessageServer):
             else:
                 logger.error('Undefined message: {}'.format(self._message_log(message)))
 
-        writer.close()
+        # TODO: cleanup this peers' information stored on the tracker
         del self._peers[writer]
-        await writer.wait_closed()
