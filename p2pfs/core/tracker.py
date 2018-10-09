@@ -85,5 +85,16 @@ class Tracker(MessageServer):
             else:
                 logger.error('Undefined message: {}'.format(self._message_log(message)))
 
-        # TODO: cleanup this peers' information stored on the tracker
+        peer_address = self._peers[writer]
+        files_to_remove = []
+        for filename, peer_possession_dict in self._chunkinfo.items():
+            if peer_address in peer_possession_dict:
+                del self._chunkinfo[filename][peer_address]
+                if len(self._chunkinfo[filename]) == 0:
+                    files_to_remove.append(filename)
+
+        for key in files_to_remove:
+            del self._chunkinfo[key]
+            del self._file_list[key]
+
         del self._peers[writer]

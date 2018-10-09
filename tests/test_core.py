@@ -121,3 +121,23 @@ async def test_download(unused_tcp_port):
 
     await tracker.stop()
     await asyncio.gather(*[peer.stop() for peer in peers])
+
+
+async def test_peer_disconnect(unused_tcp_port):
+    tracker = Tracker('localhost', unused_tcp_port)
+    peer = Peer('localhost', 0, 'localhost', unused_tcp_port)
+    tracker_started = await tracker.start()
+    peer_started = await peer.start()
+    assert tracker_started and peer_started
+
+    is_suceess, _ = await peer.publish(TEST_SMALL_FILE)
+    assert is_suceess
+    assert TEST_SMALL_FILE in tracker.file_list()
+
+    # stop peer and check the file has been removed
+    await peer.stop()
+    # return control to the loop for tracker code to run
+    await asyncio.sleep(0)
+    assert TEST_SMALL_FILE not in tracker.file_list()
+
+    await tracker.stop()
