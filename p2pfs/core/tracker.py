@@ -77,9 +77,9 @@ class Tracker(MessageServer):
                 })
             elif message_type == MessageType.REQUEST_CHUNK_REGISTER:
                 peer_address = self._peers[writer]
-                # TODO: merge the chunknum with the list
                 if peer_address in self._chunkinfo[message['filename']]:
-                    self._chunkinfo[message['filename']][peer_address].append(message['chunknum'])
+                    if message['chunknum'] not in self._chunkinfo[message['filename']][peer_address]:
+                        self._chunkinfo[message['filename']][peer_address].append(message['chunknum'])
                 else:
                     self._chunkinfo[message['filename']][peer_address] = [message['chunknum']]
             else:
