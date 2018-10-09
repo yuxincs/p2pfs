@@ -100,9 +100,9 @@ async def test_download(unused_tcp_port):
 
     # download small file
     result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE, reporthook=reporthook)
-    assert result is True
     assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
     try:
+        assert result is True
         assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
         assert reporthook.value == (1, 1000)
     finally:
@@ -110,18 +110,18 @@ async def test_download(unused_tcp_port):
 
     # download large file from single source
     result, msg = await peers[0].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_0')
-    assert result is True
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_0')
     try:
+        assert result is True
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_0')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_0')
 
     # download large file from multiple sources
     result, msg = await peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2')
-    assert result is True
     assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
     try:
+        assert result is True
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
         os.remove('downloaded_' + TEST_LARGE_FILE + '_2')
