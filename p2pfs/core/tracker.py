@@ -10,7 +10,7 @@ class Tracker(MessageServer):
         super().__init__(host, port)
         # {writer -> address}
         self._peers = {}
-        # {filename -> fileinfo}
+        # {filename -> fileinfo(size, total_chunknum)}
         self._file_list = {}
         # {filename -> {(address) -> chunknum}}
         self._chunkinfo = {}
@@ -53,7 +53,7 @@ class Tracker(MessageServer):
                     # add to chunkinfo
                     # TODO: optimize how the chunknums are stored
                     self._chunkinfo[message['filename']] = {
-                        self._peers[writer]: list(range(0, message['chunknum']))
+                        self._peers[writer]: list(range(0, message['fileinfo']['total_chunknum']))
                     }
                     await self._write_message(writer, {
                         'type': MessageType.REPLY_PUBLISH,
@@ -62,7 +62,7 @@ class Tracker(MessageServer):
                         'message': 'Success'
                     })
                     logger.info('{} published file {} of {} chunks'
-                                .format(self._peers[writer], message['filename'], message['chunknum']))
+                                .format(self._peers[writer], message['filename'], message['fileinfo']['total_chunknum']))
             elif message_type == MessageType.REQUEST_FILE_LIST:
                 await self._write_message(writer, {
                     'type': MessageType.REPLY_FILE_LIST,

@@ -68,8 +68,10 @@ class Peer(MessageServer):
         await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_PUBLISH,
             'filename': remote_name,
-            'fileinfo': {'size': os.stat(local_file).st_size},
-            'chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
+            'fileinfo': {
+                'size': os.stat(local_file).st_size,
+                'total_chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
+            },
         })
 
         message = await self._read_message(self._tracker_reader)
