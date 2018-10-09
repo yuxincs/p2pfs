@@ -92,8 +92,13 @@ class MessageServer:
 
     async def __new_connection(self, reader, writer):
         self._writers.add(writer)
-        await self._process_connection(reader, writer)
-        self._writers.remove(writer)
+        try:
+            await self._process_connection(reader, writer)
+        finally:
+            if not writer.is_closing():
+                writer.close()
+                await writer.wait_closed()
+            self._writers.remove(writer)
 
     @abstractmethod
     async def _process_connection(self, reader, writer):

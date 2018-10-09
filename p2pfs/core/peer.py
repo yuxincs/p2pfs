@@ -47,12 +47,10 @@ class Peer(MessageServer):
         return True
 
     async def stop(self):
-        self._tracker_writer.close()
-        try:
+        if not self._tracker_writer.is_closing():
+            self._tracker_writer.close()
             await self._tracker_writer.wait_closed()
-        except ConnectionResetError:
-            # if the connection has been closed
-            pass
+
         await super().stop()
 
     def set_delay(self, delay):
@@ -181,8 +179,9 @@ class Peer(MessageServer):
         finally:
             # close the connections
             for _, (_, writer) in peers.items():
-                writer.close()
-                await writer.wait_closed()
+                if not writer.is_closing():
+                    writer.close()
+                    await writer.wait_closed()
 
         # change the temp file into the actual file
         os.rename(destination + '.temp', destination)

@@ -22,7 +22,6 @@ async def test_terminals(unused_tcp_port, capsys):
     await peer_terminals[0].do_publish(TEST_SMALL_FILE)
     out, _ = capsys.readouterr()
     assert out == 'Success\n'
-    # TODO: fix resource warning for do_list_files(), possibly due to BeautifulTable()
     await peer_terminals[1].do_list_files('')
     out, _ = capsys.readouterr()
     assert TEST_SMALL_FILE in out
