@@ -102,7 +102,7 @@ class Peer(MessageServer):
         # request for file list
         file_list = await self.list_file()
         if file not in file_list:
-            return False, 'Requested file {} does not exist, try list_file?'.format(file)
+            return False, 'Requested file {} does not exist.'.format(file)
 
         await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
