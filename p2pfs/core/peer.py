@@ -48,11 +48,12 @@ class Peer(MessageServer):
         return True
 
     async def stop(self):
+        await super().stop()
+
         if not self._tracker_writer.is_closing():
             self._tracker_writer.close()
             await self._tracker_writer.wait_closed()
 
-        await super().stop()
 
     def set_delay(self, delay):
         self._delay = 0 if delay is None else delay
