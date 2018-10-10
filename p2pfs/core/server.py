@@ -60,6 +60,11 @@ class MessageServer:
             writer.close()
             await writer.wait_closed()
 
+        if len(self._writers) != 0:
+            logger.warning('Writers not fully cleared {}'.format(self._writers))
+
+        self._writers = set()
+
     @staticmethod
     def _message_log(message):
         log_message = {key: message[key] for key in message if key != 'data'}

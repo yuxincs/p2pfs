@@ -24,6 +24,15 @@ class Tracker(MessageServer):
     def peers(self):
         return tuple(self._peers.values())
 
+    async def stop(self):
+        await super().stop()
+        if len(self._peers) != 0:
+            logger.warning('Peers dict not fully cleared {}'.format(self._peers))
+
+        self._peers = {}
+        self._file_list = {}
+        self._chunkinfo = {}
+
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
         logger.info('New connection from {}'.format(writer.get_extra_info('peername')))
