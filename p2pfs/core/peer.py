@@ -142,9 +142,6 @@ class Peer(MessageServer):
         for chunknum in range(total_chunknum):
             for peer_address, possessed_chunks in chunkinfo.items():
                 if chunknum in possessed_chunks:
-                    if peer_address not in peers:
-
-                        peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
                     # write the message to ask for the chunk
                     asyncio.ensure_future(self._write_message(peers[peer_address][1], {
                         'type': MessageType.PEER_REQUEST_CHUNK,
