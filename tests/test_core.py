@@ -176,24 +176,34 @@ async def test_delay(unused_tcp_port):
     file_list = await peers[1].list_file()
     assert TEST_SMALL_FILE_1 in file_list
 
-    # download small file
-    start = time.time()
-    result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE)
-    assert result is True
-    assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
-    assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
-    os.remove('downloaded_' + TEST_SMALL_FILE)
-    download_time = time.time() - start
-    start = time.time()
-    peers[0].set_delay(1)
-    result, msg = await peers[1].download(TEST_SMALL_FILE_1, 'downloaded_' + TEST_SMALL_FILE_1)
-    assert result is True
-    download_time_with_delay = time.time() - start
-    assert download_time_with_delay > download_time
-    peers[0].set_delay(0)
+    try:
+        # download small file
+        start = time.time()
+        result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE)
+        assert result is True
+        assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
+        assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
 
-    await tracker.stop()
-    await asyncio.gather(*[peer.stop() for peer in peers])
+        download_time = time.time() - start
+        start = time.time()
+        peers[0].set_delay(1)
+        result, msg = await peers[1].download(TEST_SMALL_FILE_1, 'downloaded_' + TEST_SMALL_FILE_1)
+        assert result is True
+        download_time_with_delay = time.time() - start
+        assert download_time_with_delay > download_time
+        peers[0].set_delay(0)
+    finally:
+        try:
+            os.remove('downloaded_' + TEST_SMALL_FILE)
+        except FileNotFoundError:
+            pass
+        try:
+            os.remove('downloaded_' + TEST_SMALL_FILE_1)
+        except FileNotFoundError:
+            pass
+
+        await tracker.stop()
+        await asyncio.gather(*[peer.stop() for peer in peers])
 
 
 async def test_peer_disconnect(unused_tcp_port):
