@@ -29,28 +29,31 @@ class MessageServer:
     """
     _SOCKET_TIMEOUT = 5
 
-    def __init__(self, host, port, loop=None):
-        self._server_address = (host, port)
-        self._loop = loop
-
-        self._compressor = zstd.ZstdCompressor()
-        self._decompressor = zstd.ZstdDecompressor()
+    def __init__(self, ):
+        # internal server states
+        self._is_running = False
+        self._server_address = None
 
         # manage the connections
         self._writers = set()
         self._server = None
 
-    async def start(self):
+        self._compressor = zstd.ZstdCompressor()
+        self._decompressor = zstd.ZstdDecompressor()
+
+    async def start(self, local_address, loop=None):
         logger.info('Start listening on {}'.format(self._server_address))
         # start server
-        self._server = await asyncio.start_server(self.__new_connection, *self._server_address, loop=self._loop)
+        self._server = await asyncio.start_server(self.__new_connection, *local_address, loop=loop)
         # update server address, only get the first 2 elements because under IPv6 the return value contains 4 elements
         # see https://docs.python.org/3.7/library/socket.html#socket-families
         self._server_address = self._server.sockets[0].getsockname()[:2]
+        self._is_running = True
         return True
 
     async def stop(self):
         logger.warning('Shutting down {}'.format(self))
+        self._is_running = False
         self._server.close()
         await self._server.wait_closed()
         for writer in set(self._writers):

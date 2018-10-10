@@ -14,9 +14,8 @@ class Peer(MessageServer):
     _CHUNK_SIZE = 512 * 1024
     _HASH_FUNC = hashlib.sha256
 
-    def __init__(self, host, port, tracker_host, tracker_port, loop=None):
-        super().__init__(host, port, loop=loop)
-        self._tracker_address = (tracker_host, tracker_port)
+    def __init__(self, ):
+        super().__init__()
         self._tracker_reader, self._tracker_writer = None, None
 
         # (remote filename) <-> (local filename)
@@ -26,16 +25,14 @@ class Peer(MessageServer):
 
         self._delay = 0
 
-    async def start(self):
+    async def connect(self, tracker_address, loop=None):
         # connect to server
         try:
             self._tracker_reader, self._tracker_writer = \
-                await asyncio.open_connection(*self._tracker_address, loop=self._loop)
+                await asyncio.open_connection(*tracker_address, loop=loop)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
-            return False
-        # start the internal server
-        await super().start()
+            return False, 'Server connection refused!'
         # send out register message
         logger.info('Requesting to register')
         await self._write_message(self._tracker_writer, {
@@ -45,7 +42,7 @@ class Peer(MessageServer):
         message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_REGISTER
         logger.info('Successfully registered.')
-        return True
+        return True, 'Success'
 
     async def stop(self):
         await super().stop()
