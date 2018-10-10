@@ -147,57 +147,93 @@ class Peer(MessageServer):
             peer_address = message['peer_address']
             peers[peer_address][2] = time.time() - peers[peer_address][2]
 
-        for chunknum in range(total_chunknum):
-            for peer_address, possessed_chunks in chunkinfo.items():
-                if chunknum in possessed_chunks:
-                    # write the message to ask for the chunk
-                    asyncio.ensure_future(self._write_message(peers[peer_address][1], {
-                        'type': MessageType.PEER_REQUEST_CHUNK,
-                        'filename': file,
-                        'chunknum': chunknum
-                    }))
-                    break
+        # setup initial download plan
+        to_download = {chunknum: set() for chunknum in range(total_chunknum)}
+        for peer_address, possessed_chunks in chunkinfo.items():
+            for chunknum in possessed_chunks:
+                to_download[chunknum].add(peer_address)
 
-        # task -> reader
-        tasks = {asyncio.ensure_future(self._read_message(reader)): reader for address, (reader, _, _) in peers.items()}
-        # TODO: update chunkinfo after receiving each chunk
+        # update chunkinfo every UPDATE_FREQUENCY chunks
+        update_frequency = 30
+
+        # for disconnect recovery
+        pending_chunknum = {}
+        # schedule UPDATE_FREQUENCY chunk requests
+        for chunknum in range(min(update_frequency, total_chunknum)):
+            if len(to_download[chunknum]) == 0:
+                return False, 'File chunk #{} is not present on any peer.'.format(chunknum)
+
+            fastest_peer = min(to_download[chunknum], key=lambda address: peers[address][2])
+            asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
+                'type': MessageType.PEER_REQUEST_CHUNK,
+                'filename': file,
+                'chunknum': chunknum
+            }))
+            pending_chunknum[chunknum] = fastest_peer
+
+        cursor = min(update_frequency, total_chunknum)
+
+        read_tasks = {asyncio.ensure_future(self._read_message(reader)): peer_address
+                      for peer_address, (reader, _, _) in peers.items()}
         try:
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
-                finished = 0
-                while finished < total_chunknum:
-                    done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
+                while len(to_download) != 0:
+                    done, _ = await asyncio.wait(read_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
-                        message = task.result()
-                        if message is None:
-                            # TODO: peer has closed
-                            del tasks[task]
-                            continue
+                        try:
+                            message = task.result()
 
-                        # since the task is done, schedule a new task to be run
-                        reader = tasks[task]
-                        tasks[asyncio.ensure_future(self._read_message(reader))] = reader
-                        del tasks[task]
+                            # since the task is done, schedule a new task to be run
+                            peer_address = read_tasks[task]
+                            reader, _, _ = peers[peer_address]
+                            read_tasks[asyncio.ensure_future(self._read_message(reader))] = peer_address
+                            del read_tasks[task]
 
-                        finished += 1
-                        number, data, digest = message['chunknum'], message['data'], message['digest']
-                        raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
-                        # TODO: handle if corrupted
-                        if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                            assert False
-                        dest_file.seek(number * Peer._CHUNK_SIZE, 0)
-                        dest_file.write(raw_data)
-                        dest_file.flush()
-                        # send request chunk register to server
-                        await self._write_message(self._tracker_writer, {
-                            'type': MessageType.REQUEST_CHUNK_REGISTER,
-                            'filename': file,
-                            'chunknum': number
-                        })
-                        if reporthook:
-                            reporthook(finished, Peer._CHUNK_SIZE, fileinfo['size'])
-                        logger.debug('Got {}\'s chunk # {}'.format(file, number))
+                            number, data, digest = message['chunknum'], message['data'], message['digest']
+                            raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
+                            # TODO: handle if corrupted
+                            if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
+                                assert False
+                            del to_download[number]
+                            dest_file.seek(number * Peer._CHUNK_SIZE, 0)
+                            dest_file.write(raw_data)
+                            dest_file.flush()
+
+                            # send request chunk register to server
+                            await self._write_message(self._tracker_writer, {
+                                'type': MessageType.REQUEST_CHUNK_REGISTER,
+                                'filename': file,
+                                'chunknum': number
+                            })
+                            if reporthook:
+                                reporthook(total_chunknum - len(to_download), Peer._CHUNK_SIZE, fileinfo['size'])
+                            logger.debug('Got {}\'s chunk # {}'.format(file, number))
+
+                            # send out request chunk
+                            if cursor < total_chunknum:
+                                if len(to_download[cursor]) == 0:
+                                    return False, 'File chunk #{} is not present on any peer.'.format(cursor)
+
+                                fastest_peer = min(to_download[cursor], key=lambda address: peers[address][2])
+
+                                asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
+                                    'type': MessageType.PEER_REQUEST_CHUNK,
+                                    'filename': file,
+                                    'chunknum': cursor
+                                }))
+                                cursor += 1
+                            if (total_chunknum - len(to_download)) % update_frequency:
+                                # TODO: update chunkinfo and peers
+                                pass
+
+                        except asyncio.IncompleteReadError:
+                            # TODO: update chunkinfo and peers
+                            del read_tasks[task]
         finally:
+            # cancel current reading tasks
+            for task in read_tasks.keys():
+                task.cancel()
             # close the connections
             for _, (_, writer, _) in peers.items():
                 if not writer.is_closing():
