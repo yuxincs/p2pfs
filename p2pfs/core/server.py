@@ -50,6 +50,7 @@ class MessageServer:
         return True
 
     async def stop(self):
+        logger.warning('Shutting down {}'.format(self))
         self._server.close()
         await self._server.wait_closed()
         for writer in set(self._writers):
