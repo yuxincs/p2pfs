@@ -179,12 +179,12 @@ class Peer(MessageServer):
             if len(file_chunk_info[chunknum]) == 0:
                 return False, 'File chunk #{} is not present on any peer.'.format(chunknum)
 
-            asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
             fastest_peer = min(file_chunk_info[chunknum], key=lambda address: peer_rtts[address])
+            await self._write_message(peers[fastest_peer][1], {
                 'type': MessageType.PEER_REQUEST_CHUNK,
                 'filename': file,
                 'chunknum': chunknum
-            }))
+            })
             pending_chunknum[chunknum] = fastest_peer
 
         cursor = min(update_frequency, total_chunknum)
@@ -211,11 +211,10 @@ class Peer(MessageServer):
 
                             # ask for re-transmission if data is corrupted
                             if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                                asyncio.ensure_future(self._write_message(writer, {
+                                await self._write_message(peer_writer, {
                                     'type': MessageType.PEER_REQUEST_CHUNK,
                                     'filename': file,
                                     'chunknum': number
-                                }))
 
                             dest_file.seek(number * Peer._CHUNK_SIZE, 0)
                             dest_file.write(raw_data)
@@ -241,11 +240,10 @@ class Peer(MessageServer):
 
                                 fastest_peer = min(file_chunk_info[cursor], key=lambda address: peer_rtts[address])
 
-                                asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
+                                await self._write_message(peers[fastest_peer][1], {
                                     'type': MessageType.PEER_REQUEST_CHUNK,
                                     'filename': file,
                                     'chunknum': cursor
-                                }))
                                 cursor += 1
 
                             if (total_chunknum - len(file_chunk_info)) % update_frequency:
