@@ -196,15 +196,13 @@ class Peer(MessageServer):
                 self._file_map[file] = destination
                 while len(file_chunk_info) != 0:
                     done, _ = await asyncio.wait(read_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
-                    for task in done:
+                    for finished_task in done:
+                        peer_address = read_tasks[finished_task]
+                        peer_reader, peer_writer = peers[peer_address]
+                        # remove finished task from read_tasks to stop waiting for next iteration
+                        del read_tasks[finished_task]
                         try:
-                            message = task.result()
-
-                            # since the task is done, schedule a new task to be run
-                            peer_address = read_tasks[task]
-                            reader, writer = peers[peer_address]
-                            read_tasks[asyncio.ensure_future(self._read_message(reader))] = peer_address
-                            del read_tasks[task]
+                            message = finished_task.result()
 
                             number, data, digest = message['chunknum'], message['data'], message['digest']
                             raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
@@ -215,6 +213,10 @@ class Peer(MessageServer):
                                     'type': MessageType.PEER_REQUEST_CHUNK,
                                     'filename': file,
                                     'chunknum': number
+                                })
+                                # since the task is done, schedule a new task to be run
+                                read_tasks[asyncio.ensure_future(self._read_message(peer_reader))] = peer_address
+                                continue
 
                             dest_file.seek(number * Peer._CHUNK_SIZE, 0)
                             dest_file.write(raw_data)
