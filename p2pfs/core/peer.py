@@ -119,7 +119,6 @@ class Peer(MessageServer):
         # TODO: decide which peer to request chunk
         # peer_address -> (reader, writer)
         peers = {}
-        request_tasks = set()
         for chunknum in range(total_chunknum):
             for peer_address, possessed_chunks in chunkinfo.items():
                 if chunknum in possessed_chunks:
@@ -127,15 +126,12 @@ class Peer(MessageServer):
                         # peer_address is a string, since JSON requires keys being strings
                         peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
                     # write the message to ask for the chunk
-                    request_tasks.add(asyncio.ensure_future(self._write_message(peers[peer_address][1], {
+                    asyncio.ensure_future(self._write_message(peers[peer_address][1], {
                         'type': MessageType.PEER_REQUEST_CHUNK,
                         'filename': file,
                         'chunknum': chunknum
                     })))
                     break
-
-        # run write tasks concurrently and return when all tasks finish
-        await asyncio.wait(request_tasks, return_when=asyncio.ALL_COMPLETED)
 
         # task -> reader
         tasks = {asyncio.ensure_future(self._read_message(reader)): reader for address, (reader, _) in peers.items()}
