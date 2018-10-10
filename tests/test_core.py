@@ -227,3 +227,46 @@ async def test_peer_disconnect(unused_tcp_port):
         assert TEST_SMALL_FILE not in tracker.file_list()
     finally:
         await tracker.stop()
+
+
+async def test_peer_download_disconnect(unused_tcp_port):
+    tracker = Tracker('localhost', unused_tcp_port)
+    peers = tuple(Peer('localhost', 0, 'localhost', unused_tcp_port) for _ in range(3))
+    tracker_started = await tracker.start()
+    peer_started = await asyncio.gather(*[peer.start() for peer in peers])
+    assert tracker_started and peer_started
+    try:
+        is_suceess, _ = await peers[0].publish(TEST_LARGE_FILE)
+        assert is_suceess
+        assert TEST_LARGE_FILE in tracker.file_list()
+
+        # download large file from single source
+        is_success, _ = await peers[1].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_1')
+        assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_1')
+        assert is_success
+        assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_1')
+
+        peers[1].set_delay(0.1)
+
+        # stop the peer_0, peer_2 should continue to download because peer_1 has all chunks of the file
+        # but the speed will be noticeably slower because peer_1 has delay
+        async def stop_peer_after(peer, delay):
+            await asyncio.sleep(delay)
+            await peer.stop()
+        # run download and stop peer task concurrently
+        (is_success, _), _ = await asyncio.gather(peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
+                                                  stop_peer_after(peers[0], 1))
+        assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
+        assert is_success
+        assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
+    finally:
+        try:
+            os.remove('downloaded_' + TEST_LARGE_FILE + '_1')
+        except FileNotFoundError:
+            pass
+        try:
+            os.remove('downloaded_' + TEST_LARGE_FILE + '_2')
+        except FileNotFoundError:
+            pass
+        await tracker.stop()
+        await asyncio.gather(*[peer.stop() for peer in peers[1:]])
