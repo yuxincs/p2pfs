@@ -54,7 +54,6 @@ class Peer(MessageServer):
             self._tracker_writer.close()
             await self._tracker_writer.wait_closed()
 
-
     def set_delay(self, delay):
         self._delay = 0 if delay is None else delay
 
@@ -165,10 +164,10 @@ class Peer(MessageServer):
         peer_rtts = await self._test_peer_rtt(peers)
 
         # setup initial download plan
-        to_download = {chunknum: set() for chunknum in range(total_chunknum)}
-        for peer_address, possessed_chunks in chunkinfo.items():
-            for chunknum in possessed_chunks:
-                to_download[chunknum].add(peer_address)
+        file_chunk_info = {chunknum: set() for chunknum in range(total_chunknum)}
+        for peer_address, peer_chunks in chunkinfo.items():
+            for chunknum in peer_chunks:
+                file_chunk_info[chunknum].add(peer_address)
 
         # update chunkinfo every UPDATE_FREQUENCY chunks
         update_frequency = 30
@@ -177,11 +176,11 @@ class Peer(MessageServer):
         pending_chunknum = {}
         # schedule UPDATE_FREQUENCY chunk requests
         for chunknum in range(min(update_frequency, total_chunknum)):
-            if len(to_download[chunknum]) == 0:
+            if len(file_chunk_info[chunknum]) == 0:
                 return False, 'File chunk #{} is not present on any peer.'.format(chunknum)
 
-            fastest_peer = min(to_download[chunknum], key=lambda address: peer_rtts[address])
             asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
+            fastest_peer = min(file_chunk_info[chunknum], key=lambda address: peer_rtts[address])
                 'type': MessageType.PEER_REQUEST_CHUNK,
                 'filename': file,
                 'chunknum': chunknum
@@ -195,7 +194,7 @@ class Peer(MessageServer):
         try:
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
-                while len(to_download) != 0:
+                while len(file_chunk_info) != 0:
                     done, _ = await asyncio.wait(read_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
                         try:
@@ -221,7 +220,9 @@ class Peer(MessageServer):
                             dest_file.seek(number * Peer._CHUNK_SIZE, 0)
                             dest_file.write(raw_data)
                             dest_file.flush()
-                            del to_download[number]
+
+                            # remove successfully-received chunk from pending and download plans
+                            del file_chunk_info[number]
 
                             # send request chunk register to server
                             await self._write_message(self._tracker_writer, {
@@ -230,15 +231,15 @@ class Peer(MessageServer):
                                 'chunknum': number
                             })
                             if reporthook:
-                                reporthook(total_chunknum - len(to_download), Peer._CHUNK_SIZE, fileinfo['size'])
+                                reporthook(total_chunknum - len(file_chunk_info), Peer._CHUNK_SIZE, fileinfo['size'])
                             logger.debug('Got {}\'s chunk # {}'.format(file, number))
 
                             # send out request chunk
                             if cursor < total_chunknum:
-                                if len(to_download[cursor]) == 0:
+                                if len(file_chunk_info[cursor]) == 0:
                                     return False, 'File chunk #{} is not present on any peer.'.format(cursor)
 
-                                fastest_peer = min(to_download[cursor], key=lambda address: peer_rtts[address])
+                                fastest_peer = min(file_chunk_info[cursor], key=lambda address: peer_rtts[address])
 
                                 asyncio.ensure_future(self._write_message(peers[fastest_peer][1], {
                                     'type': MessageType.PEER_REQUEST_CHUNK,
@@ -246,7 +247,8 @@ class Peer(MessageServer):
                                     'chunknum': cursor
                                 }))
                                 cursor += 1
-                            if (total_chunknum - len(to_download)) % update_frequency:
+
+                            if (total_chunknum - len(file_chunk_info)) % update_frequency:
                                 # TODO: update chunkinfo and peers
                                 pass
 
