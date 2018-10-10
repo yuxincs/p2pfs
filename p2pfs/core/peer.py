@@ -208,13 +208,19 @@ class Peer(MessageServer):
 
                             number, data, digest = message['chunknum'], message['data'], message['digest']
                             raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
-                            # TODO: handle if corrupted
+
+                            # ask for re-transmission if data is corrupted
                             if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                                assert False
-                            del to_download[number]
+                                asyncio.ensure_future(self._write_message(writer, {
+                                    'type': MessageType.PEER_REQUEST_CHUNK,
+                                    'filename': file,
+                                    'chunknum': number
+                                }))
+
                             dest_file.seek(number * Peer._CHUNK_SIZE, 0)
                             dest_file.write(raw_data)
                             dest_file.flush()
+                            del to_download[number]
 
                             # send request chunk register to server
                             await self._write_message(self._tracker_writer, {
