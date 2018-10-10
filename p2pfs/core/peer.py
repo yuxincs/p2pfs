@@ -191,8 +191,9 @@ class Peer(MessageServer):
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
         while not reader.at_eof():
-            message = await self._read_message(reader)
-            if message is None:
+            try:
+                message = await self._read_message(reader)
+            except asyncio.IncompleteReadError:
                 break
             # artificial delay for peer
             if self._delay != 0:
