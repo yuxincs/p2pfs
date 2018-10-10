@@ -18,13 +18,14 @@ def main():
 
     loop = asyncio.get_event_loop()
     terminal = None
+    if results.option[0] == 'tracker':
         tracker = Tracker()
         terminal = TrackerTerminal(tracker)
     elif results.option[0] == 'peer':
         peer = Peer()
         terminal = PeerTerminal(peer)
     else:
-        logging.error('Option must either be \'server\' or \'peer\'')
+        logging.error('Option must either be \'tracker\' or \'peer\'')
     try:
         loop.run_until_complete(terminal.cmdloop())
     except KeyboardInterrupt:
