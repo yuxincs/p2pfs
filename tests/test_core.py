@@ -3,8 +3,8 @@ import asyncio
 import pytest
 from p2pfs import Peer, Tracker
 import time
-from tests.conftest import fmd5, TEST_SMALL_FILE, TEST_LARGE_FILE, TEST_SMALL_FILE_SIZE, TEST_LARGE_FILE_SIZE
-
+from tests.conftest import fmd5, TEST_SMALL_FILE, TEST_LARGE_FILE, \
+    TEST_SMALL_FILE_SIZE, TEST_LARGE_FILE_SIZE, TEST_SMALL_FILE_1
 pytestmark = pytest.mark.asyncio
 
 
@@ -162,6 +162,13 @@ async def test_delay(unused_tcp_port):
     assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
     file_list = await peers[1].list_file()
     assert TEST_SMALL_FILE in file_list
+    is_success, _ = await peers[0].publish(TEST_SMALL_FILE_1)
+    assert is_success
+    file_list = tracker.file_list()
+    assert TEST_SMALL_FILE in file_list
+    assert file_list[TEST_SMALL_FILE_1]['size'] == TEST_SMALL_FILE_SIZE
+    file_list = await peers[1].list_file()
+    assert TEST_SMALL_FILE_1 in file_list
 
     # download small file
     start = time.time()
@@ -173,7 +180,7 @@ async def test_delay(unused_tcp_port):
     download_time = time.time() - start
     start = time.time()
     peers[0].set_delay(1)
-    result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE)
+    result, msg = await peers[1].download(TEST_SMALL_FILE_1, 'downloaded_' + TEST_SMALL_FILE_1)
     assert result is True
     download_time_with_delay = time.time() - start
     assert download_time_with_delay > download_time
