@@ -212,5 +212,7 @@ class Peer(MessageServer):
                     'data': pybase64.b64encode(raw_data).decode('utf-8'),
                     'digest': Peer._HASH_FUNC(raw_data).hexdigest()
                 })
+            elif message_type == MessageType.PEER_PING_PONG:
+                await self._write_message(writer, message)
             else:
                 logger.error('Undefined message: {}'.format(self._message_log(message)))
