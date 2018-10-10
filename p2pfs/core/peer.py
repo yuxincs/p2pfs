@@ -204,8 +204,8 @@ class Peer(MessageServer):
                     writer.close()
                     await writer.wait_closed()
 
-        # change the temp file into the actual file
-        os.rename(destination + '.temp', destination)
+            # change the temp file into the actual file
+            os.rename(destination + '.temp', destination)
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
