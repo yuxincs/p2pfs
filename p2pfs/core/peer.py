@@ -14,9 +14,9 @@ class Peer(MessageServer):
     _CHUNK_SIZE = 512 * 1024
     _HASH_FUNC = hashlib.sha256
 
-    def __init__(self, host, port, server, server_port, loop=None):
+    def __init__(self, host, port, tracker_host, tracker_port, loop=None):
         super().__init__(host, port, loop=loop)
-        self._tracker_address = (server, server_port)
+        self._tracker_address = (tracker_host, tracker_port)
         self._tracker_reader, self._tracker_writer = None, None
 
         # (remote filename) <-> (local filename)
