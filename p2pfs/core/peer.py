@@ -133,9 +133,17 @@ class Peer(MessageServer):
 
         # start reading from peers to get pong packets
         # task -> peer_address, for easy reference to peers' RTT
-        for done in asyncio.as_completed({asyncio.ensure_future(self._read_message(reader))
-                                          for reader, _, _ in peers.values()}):
-            message = await done
+        tasks = {asyncio.ensure_future(self._read_message(reader)): peer_address
+                 for peer_address, (reader, writer, _) in peers.items()}
+        for done in asyncio.as_completed(tasks.keys()):
+            try:
+                message = await done
+            except asyncio.IncompleteReadError:
+                peer_address = tasks[done]
+                if not peers[peer_address][1].is_closing():
+                    peers[peer_address][1].close()
+                del peers[peer_address]
+                continue
             peer_address = message['peer_address']
             peers[peer_address][2] = time.time() - peers[peer_address][2]
 
