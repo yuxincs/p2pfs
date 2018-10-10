@@ -11,9 +11,9 @@ pytestmark = pytest.mark.asyncio
 async def setup_tracker_and_peers(peer_num, tracker_port):
     tracker = Tracker()
     peers = tuple(Peer() for _ in range(peer_num))
-    tracker_started = await tracker.start('localhost', tracker_port)
+    tracker_started = await tracker.start(('localhost', tracker_port))
     # spawn peers concurrently
-    peers_started = await asyncio.gather(*[peer.start('localhost', 0) for peer in peers])
+    peers_started = await asyncio.gather(*[peer.start(('localhost', 0)) for peer in peers])
     assert tracker_started and all(peers_started)
     peers_connected = await asyncio.gather(*[peer.connect(('localhost', tracker_port)) for peer in peers])
     assert all(peers_connected)
@@ -30,9 +30,9 @@ def cleanup_files(files):
 
 async def test_server_refused(unused_tcp_port):
     peer = Peer()
-    started = await peer.start('localhost', 0)
+    started = await peer.start(('localhost', 0))
     assert started
-    is_success, _ = peer.connect('localhost', unused_tcp_port)
+    is_success, _ = await peer.connect(('localhost', unused_tcp_port))
     assert not is_success
 
 
