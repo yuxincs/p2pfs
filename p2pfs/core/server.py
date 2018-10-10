@@ -14,14 +14,13 @@ class MessageType(Enum):
     REQUEST_FILE_LIST = auto()
     REQUEST_FILE_LOCATION = auto()
     REQUEST_CHUNK_REGISTER = auto()
-    REQUEST_LEAVE = auto()
     REPLY_REGISTER = auto()
     REPLY_FILE_LIST = auto()
     REPLY_PUBLISH = auto()
     REPLY_FILE_LOCATION = auto()
-    REPLY_LEAVE = auto()
     PEER_REQUEST_CHUNK = auto()
     PEER_REPLY_CHUNK = auto()
+    PEER_PING_PONG = auto()
 
 
 class MessageServer:
@@ -41,6 +40,8 @@ class MessageServer:
         self._writers = set()
         self._server = None
 
+        self._is_closing = False
+
     async def start(self):
         logger.info('Start listening on {}'.format(self._server_address))
         # start server
@@ -51,6 +52,8 @@ class MessageServer:
         return True
 
     async def stop(self):
+        logger.warning('Shutting down {}'.format(self))
+        self._is_closing = True
         self._server.close()
         await self._server.wait_closed()
         for writer in set(self._writers):
@@ -66,12 +69,9 @@ class MessageServer:
     async def _read_message(self, reader):
         assert isinstance(reader, asyncio.StreamReader)
         # receive length header -> decompress (bytes) -> decode to str (str) -> json load (dict)
-        try:
-            raw_msg_len = await reader.readexactly(4)
-            msglen = struct.unpack('>I', raw_msg_len)[0]
-            raw_msg = await reader.readexactly(msglen)
-        except asyncio.IncompleteReadError:
-            return None
+        raw_msg_len = await reader.readexactly(4)
+        msglen = struct.unpack('>I', raw_msg_len)[0]
+        raw_msg = await reader.readexactly(msglen)
 
         msg = json.loads(self._decompressor.decompress(raw_msg).decode('utf-8'))
         logger.debug('Message received {}'.format(self._message_log(msg)))
@@ -81,7 +81,8 @@ class MessageServer:
         assert isinstance(writer, asyncio.StreamWriter)
         logger.debug('Writing {}'.format(self._message_log(message)))
         # use value of enum since Enum is not JSON serializable
-        message['type'] = message['type'].value
+        if isinstance(message['type'], MessageType):
+            message['type'] = message['type'].value
         # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
         raw_msg = json.dumps(message).encode('utf-8')
         compressed = self._compressor.compress(raw_msg)
@@ -94,6 +95,10 @@ class MessageServer:
         self._writers.add(writer)
         try:
             await self._process_connection(reader, writer)
+        except ConnectionResetError:
+            # the peer has disconnected, thus the writer will raise ConnectionResetError
+            # which is fine
+            pass
         finally:
             if not writer.is_closing():
                 writer.close()

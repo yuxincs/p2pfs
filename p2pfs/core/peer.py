@@ -2,6 +2,7 @@ import logging
 import os.path
 import math
 import json
+import time
 import hashlib
 import asyncio
 import pybase64
@@ -47,11 +48,11 @@ class Peer(MessageServer):
         return True
 
     async def stop(self):
+        await super().stop()
+
         if not self._tracker_writer.is_closing():
             self._tracker_writer.close()
             await self._tracker_writer.wait_closed()
-
-        await super().stop()
 
     def set_delay(self, delay):
         self._delay = 0 if delay is None else delay
@@ -98,101 +99,236 @@ class Peer(MessageServer):
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
         return message['file_list']
 
+    async def _request_chunkinfo(self, filename):
+        await self._write_message(self._tracker_writer, {
+            'type': MessageType.REQUEST_FILE_LOCATION,
+            'filename': filename
+        })
+
+        message = await self._read_message(self._tracker_reader)
+        assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
+        fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
+        logger.debug('{}: {} ==> {}'.format(filename, fileinfo, chunkinfo))
+        return fileinfo, chunkinfo
+
+    async def _test_peer_rtt(self, peers):
+        """
+        :param peers: {peer_address -> (reader, writer)} or (peer_address, reader, writer)
+        :return: {peer_address -> rtt} or rtt
+        """
+        result = {} if isinstance(peers, dict) else -1
+        if isinstance(peers, dict):
+            for peer_address, (_, writer) in peers.items():
+                # send out ping packet
+                await self._write_message(writer, {
+                    'type': MessageType.PEER_PING_PONG,
+                    'peer_address': peer_address
+                })
+                # set current time
+                result[peer_address] = time.time()
+            # start reading from peers to get pong packets
+            for done in asyncio.as_completed(
+                    {asyncio.ensure_future(self._read_message(reader)) for (reader, _) in peers.values()}):
+                message = await done
+                peer_address = message['peer_address']
+                result[peer_address] = time.time() - result[peer_address]
+        else:
+            peer_address, reader, writer = peers
+            result = time.time()
+            await self._write_message(writer, {
+                'type': MessageType.PEER_PING_PONG,
+                'peer_address': peer_address
+            })
+            await self._read_message(reader)
+            result = time.time() - result
+
+        return result
+
     async def download(self, file, destination, reporthook=None):
         # request for file list
         file_list = await self.list_file()
         if file not in file_list:
             return False, 'Requested file {} does not exist.'.format(file)
 
-        await self._write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_FILE_LOCATION,
-            'filename': file
-        })
+        fileinfo, chunkinfo = await self._request_chunkinfo(file)
 
-        message = await self._read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
-        fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
-        logger.debug('{}: {} ==> {}'.format(file, fileinfo, chunkinfo))
+        total_chunknum = fileinfo['total_chunknum']
 
-        total_chunknum = math.ceil(fileinfo['size'] / Peer._CHUNK_SIZE)
-
-        # TODO: decide which peer to request chunk
         # peer_address -> (reader, writer)
         peers = {}
-        request_tasks = set()
-        for chunknum in range(total_chunknum):
-            for peer_address, possessed_chunks in chunkinfo.items():
-                if chunknum in possessed_chunks:
-                    if peer_address not in peers:
-                        # peer_address is a string, since JSON requires keys being strings
-                        peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
-                    # write the message to ask for the chunk
-                    request_tasks.add(asyncio.ensure_future(self._write_message(peers[peer_address][1], {
-                        'type': MessageType.PEER_REQUEST_CHUNK,
-                        'filename': file,
-                        'chunknum': chunknum
-                    })))
-                    break
+        # connect to all peers and do a speed test
+        for peer_address in chunkinfo.keys():
+            # peer_address is a string, since JSON requires keys being strings
+            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
 
-        # run write tasks concurrently and return when all tasks finish
-        await asyncio.wait(request_tasks, return_when=asyncio.ALL_COMPLETED)
+        peer_rtts = await self._test_peer_rtt(peers)
 
-        # task -> reader
-        tasks = {asyncio.ensure_future(self._read_message(reader)): reader for address, (reader, _) in peers.items()}
-        # TODO: update chunkinfo after receiving each chunk
+        # setup initial download plan
+        file_chunk_info = {chunknum: set() for chunknum in range(total_chunknum)}
+        for peer_address, peer_chunks in chunkinfo.items():
+            for chunknum in peer_chunks:
+                file_chunk_info[chunknum].add(peer_address)
+
+        # update chunkinfo every UPDATE_FREQUENCY chunks
+        update_frequency = 30
+
+        # for disconnect recovery
+        pending_chunknum = {}
+        # schedule UPDATE_FREQUENCY chunk requests
+        for chunknum in range(min(update_frequency, total_chunknum)):
+            if len(file_chunk_info[chunknum]) == 0:
+                return False, 'File chunk #{} is not present on any peer.'.format(chunknum)
+
+            fastest_peer = min(file_chunk_info[chunknum], key=lambda address: peer_rtts[address])
+            await self._write_message(peers[fastest_peer][1], {
+                'type': MessageType.PEER_REQUEST_CHUNK,
+                'filename': file,
+                'chunknum': chunknum
+            })
+            pending_chunknum[chunknum] = fastest_peer
+
+        cursor = min(update_frequency, total_chunknum)
+
+        read_tasks = {asyncio.ensure_future(self._read_message(reader)): peer_address
+                      for peer_address, (reader, _) in peers.items()}
         try:
             with open(destination + '.temp', 'wb') as dest_file:
                 self._file_map[file] = destination
-                finished = 0
-                while finished < total_chunknum:
-                    done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
-                    for task in done:
-                        message = task.result()
-                        if message is None:
-                            # TODO: peer has closed
-                            del tasks[task]
-                            continue
+                while len(file_chunk_info) != 0:
+                    done, _ = await asyncio.wait(read_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
+                    for finished_task in done:
+                        peer_address = read_tasks[finished_task]
+                        peer_reader, peer_writer = peers[peer_address]
+                        # remove finished task from read_tasks to stop waiting for next iteration
+                        del read_tasks[finished_task]
+                        try:
+                            message = finished_task.result()
 
-                        # since the task is done, schedule a new task to be run
-                        reader = tasks[task]
-                        tasks[asyncio.ensure_future(self._read_message(reader))] = reader
-                        del tasks[task]
+                            number, data, digest = message['chunknum'], message['data'], message['digest']
+                            raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
 
-                        finished += 1
-                        number, data, digest = message['chunknum'], message['data'], message['digest']
-                        raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
-                        # TODO: handle if corrupted
-                        if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
-                            assert False
-                        dest_file.seek(number * Peer._CHUNK_SIZE, 0)
-                        dest_file.write(raw_data)
-                        dest_file.flush()
-                        # send request chunk register to server
-                        await self._write_message(self._tracker_writer, {
-                            'type': MessageType.REQUEST_CHUNK_REGISTER,
-                            'filename': file,
-                            'chunknum': number
-                        })
-                        if reporthook:
-                            reporthook(finished, Peer._CHUNK_SIZE, fileinfo['size'])
-                        logger.debug('Got {}\'s chunk # {}'.format(file, number))
+                            # ask for re-transmission if data is corrupted
+                            if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
+                                await self._write_message(peer_writer, {
+                                    'type': MessageType.PEER_REQUEST_CHUNK,
+                                    'filename': file,
+                                    'chunknum': number
+                                })
+                                # since the task is done, schedule a new task to be run
+                                read_tasks[asyncio.ensure_future(self._read_message(peer_reader))] = peer_address
+                                continue
+
+                            dest_file.seek(number * Peer._CHUNK_SIZE, 0)
+                            dest_file.write(raw_data)
+                            dest_file.flush()
+
+                            # remove successfully-received chunk from pending and download plans
+                            del file_chunk_info[number]
+                            del pending_chunknum[number]
+
+                            # send request chunk register to server
+                            await self._write_message(self._tracker_writer, {
+                                'type': MessageType.REQUEST_CHUNK_REGISTER,
+                                'filename': file,
+                                'chunknum': number
+                            })
+
+                            if reporthook:
+                                reporthook(total_chunknum - len(file_chunk_info), Peer._CHUNK_SIZE, fileinfo['size'])
+                            logger.debug('Got {}\'s chunk # {}'.format(file, number))
+
+                            # send out request chunk
+                            if cursor < total_chunknum:
+                                if len(file_chunk_info[cursor]) == 0:
+                                    return False, 'File chunk #{} is not present on any peer.'.format(cursor)
+
+                                fastest_peer = min(file_chunk_info[cursor], key=lambda address: peer_rtts[address])
+
+                                await self._write_message(peers[fastest_peer][1], {
+                                    'type': MessageType.PEER_REQUEST_CHUNK,
+                                    'filename': file,
+                                    'chunknum': cursor
+                                })
+                                pending_chunknum[cursor] = fastest_peer
+                                cursor += 1
+
+                            if (total_chunknum - len(file_chunk_info)) % update_frequency:
+                                # TODO: update chunkinfo and peers
+                                pass
+
+                            # since the task is done, schedule a new task to be run
+                            read_tasks[asyncio.ensure_future(self._read_message(peer_reader))] = peer_address
+
+                        # peer disconnected during receive period
+                        except (asyncio.IncompleteReadError, RuntimeError, ConnectionResetError, BrokenPipeError):
+                            logger.warning('{} disconnected!'.format(peer_address))
+                            if not peer_writer.is_closing():
+                                peer_writer.close()
+
+                            # remove the current peer's registration
+                            for chunknum in file_chunk_info.keys():
+                                file_chunk_info[chunknum].remove(peer_address)
+                            del peer_rtts[peer_address]
+                            del peers[peer_address]
+
+                            # update chunkinfo to see if new peers have registered and update downloading plan
+                            assert not self._tracker_writer.is_closing()
+                            _, chunkinfo = await self._request_chunkinfo(file)
+                            # cancel out self registration
+                            del chunkinfo[json.dumps(self._server_address)]
+                            for address, possessed_chunks in chunkinfo.items():
+                                # if the chunkinfo hasn't been updated with peer_address removed
+                                if address == peer_address:
+                                    continue
+
+                                # if new peer appeared in chunkinfo
+                                if address not in peers:
+                                    reader, writer = \
+                                        await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
+                                    peers[address] = reader, writer
+                                    peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
+                                    # schedule the read tasks to wait for
+                                    read_tasks[asyncio.ensure_future(self._read_message(reader))] = address
+                                # update file chunk info
+                                file_chunk_info = {number: set() for number in file_chunk_info.keys()}
+                                for number in possessed_chunks:
+                                    if number in file_chunk_info and address != peer_address:
+                                        file_chunk_info[number].add(address)
+
+                            # if the disconnected peer has any pending chunks to receive
+                            # request from other peers
+                            for pending, registered_peer in pending_chunknum.items():
+                                if peer_address == registered_peer:
+                                    fastest_peer = min(file_chunk_info[pending], key=lambda address: peer_rtts[address])
+                                    _, writer = peers[fastest_peer]
+                                    await self._write_message(writer, {
+                                        'type': MessageType.PEER_REQUEST_CHUNK,
+                                        'filename': file,
+                                        'chunknum': pending
+                                    })
+                                    pending_chunknum[pending] = fastest_peer
+
         finally:
+            # cancel current reading tasks
+            for task in read_tasks.keys():
+                task.cancel()
             # close the connections
             for _, (_, writer) in peers.items():
                 if not writer.is_closing():
                     writer.close()
                     await writer.wait_closed()
 
-        # change the temp file into the actual file
-        os.rename(destination + '.temp', destination)
+            # change the temp file into the actual file
+            os.rename(destination + '.temp', destination)
 
         return True, 'File {} dowloaded to {}'.format(file, destination)
 
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
         while not reader.at_eof():
-            message = await self._read_message(reader)
-            if message is None:
+            try:
+                message = await self._read_message(reader)
+            except asyncio.IncompleteReadError:
                 break
             # artificial delay for peer
             if self._delay != 0:
@@ -211,5 +347,7 @@ class Peer(MessageServer):
                     'data': pybase64.b64encode(raw_data).decode('utf-8'),
                     'digest': Peer._HASH_FUNC(raw_data).hexdigest()
                 })
+            elif message_type == MessageType.PEER_PING_PONG:
+                await self._write_message(writer, message)
             else:
                 logger.error('Undefined message: {}'.format(self._message_log(message)))

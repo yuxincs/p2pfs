@@ -2,6 +2,7 @@ from beautifultable import BeautifulTable
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
 import p2pfs.ui.aiocmd as aiocmd
+import logging
 
 
 class TrackerTerminal(aiocmd.Cmd):
@@ -89,7 +90,9 @@ class PeerTerminal(aiocmd.Cmd):
             return update_to
 
         with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
-            hook = tqdm_hook_wrapper(t)
+            # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
+            hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
+
             _, message = await self._peer.download(filename, destination, reporthook=hook)
 
         print(message)

@@ -29,9 +29,11 @@ class Tracker(MessageServer):
         logger.info('New connection from {}'.format(writer.get_extra_info('peername')))
         self._peers[writer] = None
         while not reader.at_eof():
-            message = await self._read_message(reader)
-            if message is None:
+            try:
+                message = await self._read_message(reader)
+            except asyncio.IncompleteReadError:
                 break
+
             message_type = MessageType(message['type'])
             if message_type == MessageType.REQUEST_REGISTER:
                 # peer_address is a string, since JSON requires keys being strings
@@ -71,7 +73,6 @@ class Tracker(MessageServer):
             elif message_type == MessageType.REQUEST_FILE_LOCATION:
                 await self._write_message(writer, {
                     'type': MessageType.REPLY_FILE_LOCATION,
-                    'filename': message['filename'],
                     'fileinfo': self._file_list[message['filename']],
                     'chunkinfo': self._chunkinfo[message['filename']]
                 })
