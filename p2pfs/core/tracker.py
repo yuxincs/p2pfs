@@ -73,7 +73,6 @@ class Tracker(MessageServer):
             elif message_type == MessageType.REQUEST_FILE_LOCATION:
                 await self._write_message(writer, {
                     'type': MessageType.REPLY_FILE_LOCATION,
-                    'filename': message['filename'],
                     'fileinfo': self._file_list[message['filename']],
                     'chunkinfo': self._chunkinfo[message['filename']]
                 })
