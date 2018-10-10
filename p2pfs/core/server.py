@@ -77,7 +77,8 @@ class MessageServer:
         assert isinstance(writer, asyncio.StreamWriter)
         logger.debug('Writing {}'.format(self._message_log(message)))
         # use value of enum since Enum is not JSON serializable
-        message['type'] = message['type'].value
+        if isinstance(message['type'], MessageType):
+            message['type'] = message['type'].value
         # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
         raw_msg = json.dumps(message).encode('utf-8')
         compressed = self._compressor.compress(raw_msg)
