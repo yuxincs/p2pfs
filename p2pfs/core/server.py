@@ -40,6 +40,8 @@ class MessageServer:
         self._writers = set()
         self._server = None
 
+        self._is_closing = False
+
     async def start(self):
         logger.info('Start listening on {}'.format(self._server_address))
         # start server
@@ -51,6 +53,7 @@ class MessageServer:
 
     async def stop(self):
         logger.warning('Shutting down {}'.format(self))
+        self._is_closing = True
         self._server.close()
         await self._server.wait_closed()
         for writer in set(self._writers):
@@ -92,6 +95,10 @@ class MessageServer:
         self._writers.add(writer)
         try:
             await self._process_connection(reader, writer)
+        except ConnectionResetError:
+            # the peer has disconnected, thus the writer will raise ConnectionResetError
+            # which is fine
+            pass
         finally:
             if not writer.is_closing():
                 writer.close()
