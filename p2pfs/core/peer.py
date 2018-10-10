@@ -222,6 +222,7 @@ class Peer(MessageServer):
 
                             # remove successfully-received chunk from pending and download plans
                             del file_chunk_info[number]
+                            del pending_chunknum[number]
 
                             # send request chunk register to server
                             await self._write_message(self._tracker_writer, {
@@ -229,6 +230,7 @@ class Peer(MessageServer):
                                 'filename': file,
                                 'chunknum': number
                             })
+
                             if reporthook:
                                 reporthook(total_chunknum - len(file_chunk_info), Peer._CHUNK_SIZE, fileinfo['size'])
                             logger.debug('Got {}\'s chunk # {}'.format(file, number))
@@ -244,15 +246,66 @@ class Peer(MessageServer):
                                     'type': MessageType.PEER_REQUEST_CHUNK,
                                     'filename': file,
                                     'chunknum': cursor
+                                })
+                                pending_chunknum[cursor] = fastest_peer
                                 cursor += 1
 
                             if (total_chunknum - len(file_chunk_info)) % update_frequency:
                                 # TODO: update chunkinfo and peers
                                 pass
 
-                        except asyncio.IncompleteReadError:
-                            # TODO: update chunkinfo and peers
-                            del read_tasks[task]
+                            # since the task is done, schedule a new task to be run
+                            read_tasks[asyncio.ensure_future(self._read_message(peer_reader))] = peer_address
+
+                        # peer disconnected during receive period
+                        except (asyncio.IncompleteReadError, RuntimeError, ConnectionResetError, BrokenPipeError):
+                            logger.warning('{} disconnected!'.format(peer_address))
+                            if not peer_writer.is_closing():
+                                peer_writer.close()
+
+                            # remove the current peer's registration
+                            for chunknum in file_chunk_info.keys():
+                                file_chunk_info[chunknum].remove(peer_address)
+                            del peer_rtts[peer_address]
+                            del peers[peer_address]
+
+                            # update chunkinfo to see if new peers have registered and update downloading plan
+                            assert not self._tracker_writer.is_closing()
+                            _, chunkinfo = await self._request_chunkinfo(file)
+                            # cancel out self registration
+                            del chunkinfo[json.dumps(self._server_address)]
+                            for address, possessed_chunks in chunkinfo.items():
+                                # if the chunkinfo hasn't been updated with peer_address removed
+                                if address == peer_address:
+                                    continue
+
+                                # if new peer appeared in chunkinfo
+                                if address not in peers:
+                                    reader, writer = \
+                                        await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
+                                    peers[address] = reader, writer
+                                    peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
+                                    # schedule the read tasks to wait for
+                                    read_tasks[asyncio.ensure_future(self._read_message(reader))] = address
+                                # update file chunk info
+                                file_chunk_info = {number: set() for number in file_chunk_info.keys()}
+                                for number in possessed_chunks:
+                                    if number in file_chunk_info and address != peer_address:
+                                        file_chunk_info[number].add(address)
+
+                            # if the disconnected peer has any pending chunks to receive
+                            # request from other peers
+                            for pending, registered_peer in pending_chunknum.items():
+                                if peer_address == registered_peer:
+                                    fastest_peer = min(file_chunk_info[pending], key=lambda address: peer_rtts[address])
+                                    _, writer = peers[fastest_peer]
+                                    await self._write_message(writer, {
+                                        'type': MessageType.PEER_REQUEST_CHUNK,
+                                        'filename': file,
+                                        'chunknum': pending
+                                    })
+                                    pending_chunknum[pending] = fastest_peer
+
         finally:
             # cancel current reading tasks
             for task in read_tasks.keys():
