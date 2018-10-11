@@ -3,21 +3,9 @@ import asyncio
 import pytest
 from p2pfs import Peer, Tracker
 import time
-from tests.conftest import fmd5, TEST_SMALL_FILE, TEST_LARGE_FILE, \
+from tests.conftest import fmd5, setup_tracker_and_peers, TEST_SMALL_FILE, TEST_LARGE_FILE, \
     TEST_SMALL_FILE_SIZE, TEST_LARGE_FILE_SIZE, TEST_SMALL_FILE_1
 pytestmark = pytest.mark.asyncio
-
-
-async def setup_tracker_and_peers(peer_num, tracker_port):
-    tracker = Tracker()
-    peers = tuple(Peer() for _ in range(peer_num))
-    tracker_started = await tracker.start(('localhost', tracker_port))
-    # spawn peers concurrently
-    peers_started = await asyncio.gather(*[peer.start(('localhost', 0)) for peer in peers])
-    assert tracker_started and all(peers_started)
-    peers_connected = await asyncio.gather(*[peer.connect(('localhost', tracker_port)) for peer in peers])
-    assert all(peers_connected)
-    return tracker, peers
 
 
 def cleanup_files(files):
@@ -238,3 +226,32 @@ async def test_peer_download_disconnect(unused_tcp_port):
         cleanup_files(to_cleanup)
         await tracker.stop()
         await asyncio.gather(*[peer.stop() for peer in peers[1:]])
+
+
+async def test_peer_restart(unused_tcp_port):
+    tracker, peers = await setup_tracker_and_peers(1, unused_tcp_port)
+    is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
+    assert is_success
+    assert TEST_SMALL_FILE in tracker.file_list()
+    is_success, _ = await peers[0].disconnect()
+    await asyncio.sleep(0.5)
+    assert TEST_SMALL_FILE not in tracker.file_list()
+    assert is_success
+    is_success, _ = await peers[0].connect(('localhost', unused_tcp_port))
+    assert is_success
+    is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
+    assert TEST_SMALL_FILE in tracker.file_list()
+    assert is_success
+
+
+async def test_tracker_restart(unused_tcp_port):
+    tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
+    await tracker.stop()
+    await asyncio.sleep(0.5)
+    assert not peers[0].is_connected() and not peers[1].is_connected()
+    is_success, _ = await peers[0].connect(('localhost', unused_tcp_port))
+    assert is_success and peers[0].is_connected()
+    is_success, _ = await peers[1].connect(('localhost', unused_tcp_port))
+    assert is_success and peers[1].is_connected()
+
+

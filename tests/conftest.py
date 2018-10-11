@@ -3,6 +3,7 @@ import os
 import asyncio
 import hashlib
 import uvloop
+from p2pfs import Tracker, Peer
 
 TEST_SMALL_FILE = 'test_small_file'
 TEST_SMALL_FILE_1 = 'test_small_file_1'
@@ -21,6 +22,18 @@ def fmd5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+async def setup_tracker_and_peers(peer_num, tracker_port):
+    tracker = Tracker()
+    peers = tuple(Peer() for _ in range(peer_num))
+    tracker_started = await tracker.start(('localhost', tracker_port))
+    # spawn peers concurrently
+    peers_started = await asyncio.gather(*[peer.start(('localhost', 0)) for peer in peers])
+    assert tracker_started and all(peers_started)
+    peers_connected = await asyncio.gather(*[peer.connect(('localhost', tracker_port)) for peer in peers])
+    assert all(peers_connected)
+    return tracker, peers
 
 
 @pytest.fixture(scope='session', autouse=True)

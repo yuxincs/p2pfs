@@ -1,22 +1,19 @@
 import asyncio
 import os
 import pytest
-from tests.conftest import fmd5, TEST_SMALL_FILE
-from p2pfs import Peer, Tracker, PeerTerminal, TrackerTerminal
+from tests.conftest import fmd5, setup_tracker_and_peers, TEST_SMALL_FILE
+from p2pfs import PeerTerminal, TrackerTerminal
 
 pytestmark = pytest.mark.asyncio
 
 
 async def test_terminals(unused_tcp_port, capsys):
-    tracker = Tracker('localhost', unused_tcp_port)
-    peers = tuple(Peer('localhost', 0, 'localhost', unused_tcp_port) for _ in range(2))
-    tracker_started = await tracker.start()
-    # spawn peers concurrently
-    peers_started = await asyncio.gather(*[peer.start() for peer in peers])
-    assert tracker_started and all(peers_started)
+    tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
     peer_terminals = tuple(PeerTerminal(peer) for peer in peers)
     tracker_terminal = TrackerTerminal(tracker)
-
+    await peer_terminals[1].do_connect('localhost {}'.format(unused_tcp_port))
+    out, _ = capsys.readouterr()
+    assert 'Already' in out
     await peer_terminals[0].do_help('')
     capsys.readouterr()
     await peer_terminals[0].do_publish(TEST_SMALL_FILE)
