@@ -139,6 +139,9 @@ class Peer(MessageServer):
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
         fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
         logger.debug('{}: {} ==> {}'.format(filename, fileinfo, chunkinfo))
+        # cancel out self registration
+        if self._server_address in chunkinfo:
+            del chunkinfo[json.dumps(self._server_address)]
         return fileinfo, chunkinfo
 
     async def _test_peer_rtt(self, peers):
@@ -304,8 +307,7 @@ class Peer(MessageServer):
                             # update chunkinfo to see if new peers have registered and update downloading plan
                             assert not self._tracker_writer.is_closing()
                             _, chunkinfo = await self._request_chunkinfo(file)
-                            # cancel out self registration
-                            del chunkinfo[json.dumps(self._server_address)]
+
                             for address, possessed_chunks in chunkinfo.items():
                                 # if the chunkinfo hasn't been updated with peer_address removed
                                 if address == peer_address:
