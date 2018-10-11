@@ -80,7 +80,7 @@ class Peer(MessageServer):
     async def stop(self):
         await super().stop()
 
-        if not self._tracker_writer.is_closing():
+        if await self.is_connected() and not self._tracker_writer.is_closing():
             self._tracker_writer.close()
             await self._tracker_writer.wait_closed()
 
@@ -95,6 +95,9 @@ class Peer(MessageServer):
 
         if remote_name in self._pending_publish:
             return False, 'Publish file {} already in progress.'.format(local_file)
+
+        if not await self.is_connected():
+            return False, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
 
         self._pending_publish.add(remote_name)
 
@@ -181,8 +184,8 @@ class Peer(MessageServer):
 
     async def download(self, file, destination, reporthook=None):
         # request for file list
-        file_list = await self.list_file()
-        if file not in file_list:
+        file_list, _ = await self.list_file()
+        if not file_list or file not in file_list:
             return False, 'Requested file {} does not exist.'.format(file)
         # TODO: handle ConnectionResetError
         fileinfo, chunkinfo = await self._request_chunkinfo(file)
@@ -275,7 +278,7 @@ class Peer(MessageServer):
 
                             # send out request chunk
                             if cursor < total_chunknum:
-                                if len(file_chunk_info[cursor]) == 0:
+                                if len(file_chunk_info[cursor]) == 0 and await self.is_connected():
                                     # update chunkinfo to see if new peers have registered and update downloading plan
                                     assert not self._tracker_writer.is_closing()
                                     # TODO: handle ConnectionResetError
