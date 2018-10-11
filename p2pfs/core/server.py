@@ -41,6 +41,9 @@ class MessageServer:
         self._compressor = zstd.ZstdCompressor()
         self._decompressor = zstd.ZstdDecompressor()
 
+    def is_running(self):
+        return self._is_running
+
     async def start(self, local_address, loop=None):
         logger.info('Start listening on {}'.format(self._server_address))
         # start server
