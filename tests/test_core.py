@@ -55,7 +55,7 @@ async def test_publish(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-        file_list = await peers[1].list_file()
+        file_list, _ = await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
         is_success, _ = await peers[1].publish(TEST_LARGE_FILE)
@@ -63,7 +63,7 @@ async def test_publish(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
-        file_list = await peers[0].list_file()
+        file_list, _ = await peers[0].list_file()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
     finally:
         await tracker.stop()
@@ -80,7 +80,7 @@ async def test_download(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-        file_list = await peers[1].list_file()
+        file_list, _ = await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
         is_success, _ = await peers[1].publish(TEST_LARGE_FILE)
@@ -88,7 +88,7 @@ async def test_download(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
-        file_list = await peers[0].list_file()
+        file_list, _ = await peers[0].list_file()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
 
         def reporthook(chunk_num, chunk_size, total_size):
@@ -143,14 +143,14 @@ async def test_delay(unused_tcp_port):
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-    file_list = await peers[1].list_file()
+    file_list, _ = await peers[1].list_file()
     assert TEST_SMALL_FILE in file_list
     is_success, _ = await peers[0].publish(TEST_SMALL_FILE_1)
     assert is_success
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE_1]['size'] == TEST_SMALL_FILE_SIZE
-    file_list = await peers[1].list_file()
+    file_list, _ = await peers[1].list_file()
     assert TEST_SMALL_FILE_1 in file_list
     to_cleanup = set()
     try:
@@ -218,6 +218,38 @@ async def test_peer_download_disconnect(unused_tcp_port):
         # run download and stop peer task concurrently
         (is_success, _), _ = await asyncio.gather(peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
                                                   stop_peer_after(peers[0], 1))
+        assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
+        assert is_success
+        assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
+    finally:
+        cleanup_files(to_cleanup)
+        await tracker.stop()
+        await asyncio.gather(*[peer.stop() for peer in peers[1:]])
+
+
+async def test_tracker_download_disconnect(unused_tcp_port):
+    tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
+    to_cleanup = set()
+    try:
+        is_suceess, _ = await peers[0].publish(TEST_LARGE_FILE)
+        assert is_suceess
+        assert TEST_LARGE_FILE in tracker.file_list()
+
+        # download large file from single source
+        is_success, _ = await peers[1].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_1')
+        assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_1')
+        assert is_success
+        assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_1')
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_1')
+
+        # stop tracker in the download process, should still successfully download since peer is still alive
+        async def stop_after(obj, delay):
+            await asyncio.sleep(delay)
+            await obj.stop()
+        # run download and stop task concurrently
+        (is_success, _), _ = await asyncio.gather(peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
+                                                  stop_after(tracker, 1))
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
