@@ -182,7 +182,7 @@ class Peer(MessageServer):
         file_list = await self.list_file()
         if file not in file_list:
             return False, 'Requested file {} does not exist.'.format(file)
-
+        # TODO: handle ConnectionResetError
         fileinfo, chunkinfo = await self._request_chunkinfo(file)
 
         total_chunknum = fileinfo['total_chunknum']
@@ -260,6 +260,7 @@ class Peer(MessageServer):
                             del pending_chunknum[number]
 
                             # send request chunk register to server
+                            # TODO: handle ConnectionResetError
                             await self._write_message(self._tracker_writer, {
                                 'type': MessageType.REQUEST_CHUNK_REGISTER,
                                 'filename': file,
@@ -278,6 +279,7 @@ class Peer(MessageServer):
                                 if len(file_chunk_info[cursor]) == 0:
                                     # update chunkinfo to see if new peers have registered and update downloading plan
                                     assert not self._tracker_writer.is_closing()
+                                    # TODO: handle ConnectionResetError
                                     _, chunkinfo = await self._request_chunkinfo(file)
 
                                     for address, possessed_chunks in chunkinfo.items():
@@ -329,6 +331,7 @@ class Peer(MessageServer):
 
                             # update chunkinfo to see if new peers have registered and update downloading plan
                             assert not self._tracker_writer.is_closing()
+                            # TODO: handle ConnectionResetError
                             _, chunkinfo = await self._request_chunkinfo(file)
 
                             for address, possessed_chunks in chunkinfo.items():
