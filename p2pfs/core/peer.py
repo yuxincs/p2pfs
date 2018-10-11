@@ -140,7 +140,7 @@ class Peer(MessageServer):
         fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
         logger.debug('{}: {} ==> {}'.format(filename, fileinfo, chunkinfo))
         # cancel out self registration
-        if self._server_address in chunkinfo:
+        if json.dumps(self._server_address) in chunkinfo:
             del chunkinfo[json.dumps(self._server_address)]
         return fileinfo, chunkinfo
 
