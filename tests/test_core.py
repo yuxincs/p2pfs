@@ -242,16 +242,3 @@ async def test_peer_restart(unused_tcp_port):
     is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
     assert TEST_SMALL_FILE in tracker.file_list()
     assert is_success
-
-
-async def test_tracker_restart(unused_tcp_port):
-    tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
-    await tracker.stop()
-    await asyncio.sleep(0.5)
-    assert not peers[0].is_connected() and not peers[1].is_connected()
-    is_success, _ = await peers[0].connect(('localhost', unused_tcp_port))
-    assert is_success and peers[0].is_connected()
-    is_success, _ = await peers[1].connect(('localhost', unused_tcp_port))
-    assert is_success and peers[1].is_connected()
-
-
