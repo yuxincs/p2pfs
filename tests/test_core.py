@@ -248,5 +248,8 @@ async def test_tracker_restart(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
     await tracker.stop()
     assert not tracker.is_running()
+    await asyncio.sleep(0.5)
+    is_all_connected = await asyncio.gather(*[peer.is_connected() for peer in peers])
+    assert not any(is_all_connected)
     await tracker.start(('localhost', unused_tcp_port))
     assert tracker.is_running()
