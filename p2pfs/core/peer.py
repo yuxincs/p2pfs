@@ -274,9 +274,6 @@ class Peer(MessageServer):
                             # send out request chunk
                             if cursor < total_chunknum:
                                 if len(file_chunk_info[cursor]) == 0:
-                                    return False, 'File chunk #{} is not present on any peer.'.format(cursor)
-
-                                if len(file_chunk_info[cursor]) == 0:
                                     # update chunkinfo to see if new peers have registered and update downloading plan
                                     assert not self._tracker_writer.is_closing()
                                     # TODO: handle ConnectionResetError
