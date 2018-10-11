@@ -25,7 +25,12 @@ class Peer(MessageServer):
 
         self._delay = 0
 
+    def is_connected(self):
+        return not self._tracker_writer.is_closing()
+
     async def connect(self, tracker_address, loop=None):
+        if self._tracker_writer and not self._tracker_writer.is_closing():
+            return False, 'Already connected!'
         # connect to server
         try:
             self._tracker_reader, self._tracker_writer = \
@@ -42,7 +47,21 @@ class Peer(MessageServer):
         message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_REGISTER
         logger.info('Successfully registered.')
-        return True, 'Success'
+        return True, 'Connected!'
+
+    async def disconnect(self):
+        if not self._tracker_writer or self._tracker_writer.is_closing():
+            return False, 'Already disconnected'
+        self._tracker_writer.close()
+        await self._tracker_writer.wait_closed()
+
+        self._reset()
+        return True, 'Disconnected!'
+
+    def _reset(self):
+        self._pending_publish = set()
+        self._delay = 0
+        self._file_map = {}
 
     async def stop(self):
         await super().stop()
