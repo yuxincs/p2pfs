@@ -55,18 +55,19 @@ class MessageServer:
         return True
 
     async def stop(self):
-        logger.warning('Shutting down {}'.format(self))
-        self._is_running = False
-        self._server.close()
-        await self._server.wait_closed()
-        for writer in set(self._writers):
-            writer.close()
-            await writer.wait_closed()
+        if self._is_running:
+            logger.warning('Shutting down {}'.format(self))
+            self._is_running = False
+            self._server.close()
+            await self._server.wait_closed()
+            for writer in set(self._writers):
+                writer.close()
+                await writer.wait_closed()
 
-        if len(self._writers) != 0:
-            logger.warning('Writers not fully cleared {}'.format(self._writers))
+            if len(self._writers) != 0:
+                logger.warning('Writers not fully cleared {}'.format(self._writers))
 
-        self._writers = set()
+            self._writers = set()
 
     @staticmethod
     def _message_log(message):
