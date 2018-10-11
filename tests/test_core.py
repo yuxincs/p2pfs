@@ -242,3 +242,9 @@ async def test_peer_restart(unused_tcp_port):
     is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
     assert TEST_SMALL_FILE in tracker.file_list()
     assert is_success
+
+
+async def test_tracker_restart(unused_tcp_port):
+    tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
+    await tracker.stop()
+    await tracker.start(('localhost', unused_tcp_port))
