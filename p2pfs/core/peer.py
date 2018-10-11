@@ -316,7 +316,7 @@ class Peer(MessageServer):
                                 # if new peer appeared in chunkinfo
                                 if address not in peers:
                                     reader, writer = \
-                                        await asyncio.open_connection(*json.loads(peer_address))
+                                        await asyncio.open_connection(*json.loads(address))
                                     peers[address] = reader, writer
                                     peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
                                     # schedule the read tasks to wait for
