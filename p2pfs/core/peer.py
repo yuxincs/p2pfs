@@ -122,12 +122,14 @@ class Peer(MessageServer):
         return is_success, message
 
     async def list_file(self):
+        if not self.is_connected():
+            return None, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
         await self._write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LIST,
         })
         message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
-        return message['file_list']
+        return message['file_list'], 'Success'
 
     async def _request_chunkinfo(self, filename):
         await self._write_message(self._tracker_writer, {

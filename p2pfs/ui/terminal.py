@@ -78,7 +78,7 @@ class PeerTerminal(aiocmd.Cmd):
         print(message)
 
     async def do_list_files(self, arg):
-        file_list_dict = await self._peer.list_file()
+        file_list_dict, _ = await self._peer.list_file()
         table = BeautifulTable()
         table.row_separator_char = ''
 
