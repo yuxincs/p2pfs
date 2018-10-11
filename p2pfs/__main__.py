@@ -17,20 +17,24 @@ def main():
     results = arg_parser.parse_args()
 
     loop = asyncio.get_event_loop()
+    obj = None
     terminal = None
     if results.option[0] == 'tracker':
-        tracker = Tracker()
-        terminal = TrackerTerminal(tracker)
+        obj = Tracker()
+        terminal = TrackerTerminal(obj)
     elif results.option[0] == 'peer':
-        peer = Peer()
-        terminal = PeerTerminal(peer)
+        obj = Peer()
+        loop.run_until_complete(obj.start(('localhost', 0)))
+        terminal = PeerTerminal(obj)
     else:
         logging.error('Option must either be \'tracker\' or \'peer\'')
+        exit(0)
     try:
         loop.run_until_complete(terminal.cmdloop())
     except KeyboardInterrupt:
         pass
     finally:
+        loop.run_until_complete(obj.stop())
         loop.close()
 
 
