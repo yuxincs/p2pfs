@@ -247,4 +247,6 @@ async def test_peer_restart(unused_tcp_port):
 async def test_tracker_restart(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
     await tracker.stop()
+    assert not tracker.is_running()
     await tracker.start(('localhost', unused_tcp_port))
+    assert tracker.is_running()
