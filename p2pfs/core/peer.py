@@ -187,8 +187,11 @@ class Peer(MessageServer):
         file_list, _ = await self.list_file()
         if not file_list or file not in file_list:
             return False, 'Requested file {} does not exist.'.format(file)
-        # TODO: handle ConnectionResetError
-        fileinfo, chunkinfo = await self._request_chunkinfo(file)
+        try:
+            fileinfo, chunkinfo = await self._request_chunkinfo(file)
+        except ConnectionResetError:
+            logger.warning('tracker not connected')
+            return False, 'Tracker is not connected. try \'connect <tracker_ip> <tracker_port>\''
 
         total_chunknum = fileinfo['total_chunknum']
 
@@ -265,12 +268,16 @@ class Peer(MessageServer):
                             del pending_chunknum[number]
 
                             # send request chunk register to server
-                            # TODO: handle ConnectionResetError
-                            await self._write_message(self._tracker_writer, {
-                                'type': MessageType.REQUEST_CHUNK_REGISTER,
-                                'filename': file,
-                                'chunknum': number
-                            })
+                            try:
+                                await self._write_message(self._tracker_writer, {
+                                    'type': MessageType.REQUEST_CHUNK_REGISTER,
+                                    'filename': file,
+                                    'chunknum': number
+                                })
+                            except ConnectionResetError:
+                                # stop querying tracker
+                                assert not await self.is_connected()
+                                pass
 
                             if reporthook:
                                 reporthook(total_chunknum - len(file_chunk_info), Peer._CHUNK_SIZE, fileinfo['size'])
@@ -280,9 +287,11 @@ class Peer(MessageServer):
                             if cursor < total_chunknum:
                                 if len(file_chunk_info[cursor]) == 0 and await self.is_connected():
                                     # update chunkinfo to see if new peers have registered and update downloading plan
-                                    assert not self._tracker_writer.is_closing()
-                                    # TODO: handle ConnectionResetError
-                                    _, chunkinfo = await self._request_chunkinfo(file)
+                                    try:
+                                        _, chunkinfo = await self._request_chunkinfo(file)
+                                    except ConnectionResetError:
+                                        assert not self.is_connected()
+                                        pass
 
                                     for address, possessed_chunks in chunkinfo.items():
                                         # if new peer appeared in chunkinfo
@@ -332,43 +341,45 @@ class Peer(MessageServer):
                             del peers[peer_address]
 
                             # update chunkinfo to see if new peers have registered and update downloading plan
-                            assert not self._tracker_writer.is_closing()
-                            # TODO: handle ConnectionResetError
-                            _, chunkinfo = await self._request_chunkinfo(file)
+                            try:
+                                _, chunkinfo = await self._request_chunkinfo(file)
 
-                            for address, possessed_chunks in chunkinfo.items():
-                                # if the chunkinfo hasn't been updated with peer_address removed
-                                if address == peer_address:
-                                    continue
+                                for address, possessed_chunks in chunkinfo.items():
+                                    # if the chunkinfo hasn't been updated with peer_address removed
+                                    if address == peer_address:
+                                        continue
 
-                                # if new peer appeared in chunkinfo
-                                if address not in peers:
-                                    reader, writer = \
-                                        await asyncio.open_connection(*json.loads(address))
-                                    peers[address] = reader, writer
-                                    peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
-                                    # schedule the read tasks to wait for
-                                    read_tasks[asyncio.ensure_future(self._read_message(reader))] = address
-                                # update file chunk info
-                                file_chunk_info = {number: set() for number in file_chunk_info.keys()}
-                                for number in possessed_chunks:
-                                    if number in file_chunk_info and address != peer_address:
-                                        file_chunk_info[number].add(address)
+                                    # if new peer appeared in chunkinfo
+                                    if address not in peers:
+                                        reader, writer = \
+                                            await asyncio.open_connection(*json.loads(address))
+                                        peers[address] = reader, writer
+                                        peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
+                                        # schedule the read tasks to wait for
+                                        read_tasks[asyncio.ensure_future(self._read_message(reader))] = address
+                                    # update file chunk info
+                                    file_chunk_info = {number: set() for number in file_chunk_info.keys()}
+                                    for number in possessed_chunks:
+                                        if number in file_chunk_info and address != peer_address:
+                                            file_chunk_info[number].add(address)
 
-                            # if the disconnected peer has any pending chunks to receive
-                            # request from other peers
-                            for pending, registered_peer in pending_chunknum.items():
-                                if peer_address == registered_peer:
-                                    if len(file_chunk_info[pending]) == 0:
-                                        return False, 'Chunk #{} doesn\'t exist on any peers.'.format(pending)
-                                    fastest_peer = min(file_chunk_info[pending], key=lambda address: peer_rtts[address])
-                                    _, writer = peers[fastest_peer]
-                                    await self._write_message(writer, {
-                                        'type': MessageType.PEER_REQUEST_CHUNK,
-                                        'filename': file,
-                                        'chunknum': pending
-                                    })
-                                    pending_chunknum[pending] = fastest_peer
+                                # if the disconnected peer has any pending chunks to receive
+                                # request from other peers
+                                for pending, registered_peer in pending_chunknum.items():
+                                    if peer_address == registered_peer:
+                                        if len(file_chunk_info[pending]) == 0:
+                                            return False, 'Chunk #{} doesn\'t exist on any peers.'.format(pending)
+                                        fastest_peer = min(file_chunk_info[pending],
+                                                           key=lambda address: peer_rtts[address])
+                                        _, writer = peers[fastest_peer]
+                                        await self._write_message(writer, {
+                                            'type': MessageType.PEER_REQUEST_CHUNK,
+                                            'filename': file,
+                                            'chunknum': pending
+                                        })
+                                        pending_chunknum[pending] = fastest_peer
+                            except ConnectionResetError:
+                                pass
 
         finally:
             # cancel current reading tasks
