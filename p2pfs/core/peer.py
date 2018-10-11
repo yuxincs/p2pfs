@@ -26,6 +26,7 @@ class Peer(MessageServer):
         self._delay = 0
 
     def is_connected(self):
+        # TODO: this method is not reliable
         return not self._tracker_writer.is_closing()
 
     async def connect(self, tracker_address, loop=None):
