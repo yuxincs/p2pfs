@@ -25,12 +25,25 @@ class Peer(MessageServer):
 
         self._delay = 0
 
-    def is_connected(self):
-        # TODO: this method is not reliable
-        return not self._tracker_writer.is_closing()
+    async def is_connected(self):
+        if not self._tracker_writer:
+            return False
+        # tracker gracefully closed connection
+        can_read = not self._tracker_reader.at_eof()
+        can_write = True
+        # tracker disconnects suddenly
+        try:
+            await self._tracker_writer.drain()
+        except ConnectionResetError:
+            can_write = False
+            if not self._tracker_writer.is_closing():
+                self._tracker_writer.close()
+        is_connected = can_read and can_write
+
+        return is_connected
 
     async def connect(self, tracker_address, loop=None):
-        if self._tracker_writer and not self._tracker_writer.is_closing():
+        if await self.is_connected():
             return False, 'Already connected!'
         # connect to server
         try:
