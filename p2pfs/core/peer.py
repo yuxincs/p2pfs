@@ -275,6 +275,29 @@ class Peer(MessageServer):
                                 if len(file_chunk_info[cursor]) == 0:
                                     return False, 'File chunk #{} is not present on any peer.'.format(cursor)
 
+                                if len(file_chunk_info[cursor]) == 0:
+                                    # update chunkinfo to see if new peers have registered and update downloading plan
+                                    assert not self._tracker_writer.is_closing()
+                                    _, chunkinfo = await self._request_chunkinfo(file)
+
+                                    for address, possessed_chunks in chunkinfo.items():
+                                        # if new peer appeared in chunkinfo
+                                        if address not in peers:
+                                            reader, writer = \
+                                                await asyncio.open_connection(*json.loads(address))
+                                            peers[address] = reader, writer
+                                            peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
+                                            # schedule the read tasks to wait for
+                                            read_tasks[asyncio.ensure_future(self._read_message(reader))] = address
+                                        # update file chunk info
+                                        file_chunk_info = {number: set() for number in file_chunk_info.keys()}
+                                        for number in possessed_chunks:
+                                            if number in file_chunk_info:
+                                                file_chunk_info[number].add(address)
+
+                                if len(file_chunk_info[cursor]) == 0:
+                                    return False, 'Chunk #{} doesn\'t exist on any peers.'.format(cursor)
+
                                 fastest_peer = min(file_chunk_info[cursor], key=lambda address: peer_rtts[address])
 
                                 await self._write_message(peers[fastest_peer][1], {
@@ -331,6 +354,8 @@ class Peer(MessageServer):
                             # request from other peers
                             for pending, registered_peer in pending_chunknum.items():
                                 if peer_address == registered_peer:
+                                    if len(file_chunk_info[pending]) == 0:
+                                        return False, 'Chunk #{} doesn\'t exist on any peers.'.format(pending)
                                     fastest_peer = min(file_chunk_info[pending], key=lambda address: peer_rtts[address])
                                     _, writer = peers[fastest_peer]
                                     await self._write_message(writer, {
