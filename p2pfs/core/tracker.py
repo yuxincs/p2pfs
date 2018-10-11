@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class Tracker(MessageServer):
-    def __init__(self, host, port):
-        super().__init__(host, port)
+    def __init__(self):
+        super().__init__()
         # {writer -> address}
         self._peers = {}
         # {filename -> fileinfo(size, total_chunknum)}
@@ -23,6 +23,18 @@ class Tracker(MessageServer):
 
     def peers(self):
         return tuple(self._peers.values())
+
+    def _reset(self):
+        self._peers = {}
+        self._file_list = {}
+        self._chunkinfo = {}
+
+    async def stop(self):
+        await super().stop()
+        if len(self._peers) != 0:
+            logger.warning('Peers dict not fully cleared {}'.format(self._peers))
+
+        self._reset()
 
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)

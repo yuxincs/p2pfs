@@ -63,6 +63,13 @@ class PeerTerminal(aiocmd.Cmd):
         else:
             self._peer.set_delay(float(arg))
 
+    async def do_connect(self, arg):
+        arg = arg.split(' ')
+        if len(arg) < 2:
+            print('More arguments required! Usage: connect <address> <port>')
+        _, message = await self._peer.connect((arg[0], int(arg[1])))
+        print(message)
+
     async def do_list_files(self, arg):
         file_list_dict = await self._peer.list_file()
         table = BeautifulTable()

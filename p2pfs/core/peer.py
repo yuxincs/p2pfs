@@ -14,9 +14,8 @@ class Peer(MessageServer):
     _CHUNK_SIZE = 512 * 1024
     _HASH_FUNC = hashlib.sha256
 
-    def __init__(self, host, port, server, server_port, loop=None):
-        super().__init__(host, port, loop=loop)
-        self._tracker_address = (server, server_port)
+    def __init__(self, ):
+        super().__init__()
         self._tracker_reader, self._tracker_writer = None, None
 
         # (remote filename) <-> (local filename)
@@ -26,16 +25,19 @@ class Peer(MessageServer):
 
         self._delay = 0
 
-    async def start(self):
+    def is_connected(self):
+        return not self._tracker_writer.is_closing()
+
+    async def connect(self, tracker_address, loop=None):
+        if self._tracker_writer and not self._tracker_writer.is_closing():
+            return False, 'Already connected!'
         # connect to server
         try:
             self._tracker_reader, self._tracker_writer = \
-                await asyncio.open_connection(*self._tracker_address, loop=self._loop)
+                await asyncio.open_connection(*tracker_address, loop=loop)
         except ConnectionRefusedError:
             logger.error('Server connection refused!')
-            return False
-        # start the internal server
-        await super().start()
+            return False, 'Server connection refused!'
         # send out register message
         logger.info('Requesting to register')
         await self._write_message(self._tracker_writer, {
@@ -45,7 +47,21 @@ class Peer(MessageServer):
         message = await self._read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_REGISTER
         logger.info('Successfully registered.')
-        return True
+        return True, 'Connected!'
+
+    async def disconnect(self):
+        if not self._tracker_writer or self._tracker_writer.is_closing():
+            return False, 'Already disconnected'
+        self._tracker_writer.close()
+        await self._tracker_writer.wait_closed()
+
+        self._reset()
+        return True, 'Disconnected!'
+
+    def _reset(self):
+        self._pending_publish = set()
+        self._delay = 0
+        self._file_map = {}
 
     async def stop(self):
         await super().stop()
@@ -159,7 +175,7 @@ class Peer(MessageServer):
         # connect to all peers and do a speed test
         for peer_address in chunkinfo.keys():
             # peer_address is a string, since JSON requires keys being strings
-            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
+            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address))
 
         peer_rtts = await self._test_peer_rtt(peers)
 
@@ -284,7 +300,7 @@ class Peer(MessageServer):
                                 # if new peer appeared in chunkinfo
                                 if address not in peers:
                                     reader, writer = \
-                                        await asyncio.open_connection(*json.loads(peer_address), loop=self._loop)
+                                        await asyncio.open_connection(*json.loads(peer_address))
                                     peers[address] = reader, writer
                                     peer_rtts[address] = await self._test_peer_rtt((address, reader, writer))
                                     # schedule the read tasks to wait for
