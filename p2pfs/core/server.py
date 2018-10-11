@@ -45,7 +45,7 @@ class MessageServer:
         return self._is_running
 
     async def start(self, local_address, loop=None):
-        logger.info('Start listening on {}'.format(self._server_address))
+        logger.info('Start listening on {}'.format(local_address))
         # start server
         self._server = await asyncio.start_server(self.__new_connection, *local_address, loop=loop)
         # update server address, only get the first 2 elements because under IPv6 the return value contains 4 elements
