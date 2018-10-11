@@ -14,6 +14,13 @@ class TrackerTerminal(aiocmd.Cmd):
         self._tracker = tracker
         super().__init__()
 
+    async def do_start(self, arg):
+        arg = arg.split(' ')
+        if len(arg) < 2:
+            print('Not enough argument, start <host> <port>')
+        else:
+            await self._tracker.start((arg[0], int(arg[1])))
+
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
         table = BeautifulTable()
