@@ -399,28 +399,30 @@ class Peer(MessageServer):
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
         while not reader.at_eof():
+            # peer's server is stateless, no need to worry about peer disconnection
+            # that's the problem of the other side
             try:
-                message = await self._read_message(reader)
-            except asyncio.IncompleteReadError:
+                message = await read_message(reader)
+                # artificial delay for peer
+                if self._delay != 0:
+                    await asyncio.sleep(self._delay)
+                message_type = MessageType(message['type'])
+                if message_type == MessageType.PEER_REQUEST_CHUNK:
+                    assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])
+                    local_file = self._file_map[message['filename']]
+                    with open(local_file, 'rb') as f:
+                        f.seek(message['chunknum'] * Peer._CHUNK_SIZE, 0)
+                        raw_data = f.read(Peer._CHUNK_SIZE)
+                    await write_message(writer, {
+                        'type': MessageType.PEER_REPLY_CHUNK,
+                        'filename': message['filename'],
+                        'chunknum': message['chunknum'],
+                        'data': pybase64.b64encode(raw_data).decode('utf-8'),
+                        'digest': Peer._HASH_FUNC(raw_data).hexdigest()
+                    })
+                elif message_type == MessageType.PEER_PING_PONG:
+                    await write_message(writer, message)
+                else:
+                    logger.error('Undefined message: {}'.format(message))
+            except (asyncio.IncompleteReadError, ConnectionError, BrokenPipeError):
                 break
-            # artificial delay for peer
-            if self._delay != 0:
-                await asyncio.sleep(self._delay)
-            message_type = MessageType(message['type'])
-            if message_type == MessageType.PEER_REQUEST_CHUNK:
-                assert message['filename'] in self._file_map, 'File {} requested does not exist'.format(message['filename'])
-                local_file = self._file_map[message['filename']]
-                with open(local_file, 'rb') as f:
-                    f.seek(message['chunknum'] * Peer._CHUNK_SIZE, 0)
-                    raw_data = f.read(Peer._CHUNK_SIZE)
-                await self._write_message(writer, {
-                    'type': MessageType.PEER_REPLY_CHUNK,
-                    'filename': message['filename'],
-                    'chunknum': message['chunknum'],
-                    'data': pybase64.b64encode(raw_data).decode('utf-8'),
-                    'digest': Peer._HASH_FUNC(raw_data).hexdigest()
-                })
-            elif message_type == MessageType.PEER_PING_PONG:
-                await self._write_message(writer, message)
-            else:
-                logger.error('Undefined message: {}'.format(self._message_log(message)))
