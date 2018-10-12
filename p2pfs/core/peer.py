@@ -27,7 +27,7 @@ class DownloadManager:
         # indicating the tracker's connectivity
         self._is_connected = True
 
-    async def _test_peer_rtt(self, address):
+    async def _update_peer_rtt(self, address):
         reader, writer = self._peers[address]
         self._peers[address][2] = time.time()
         await write_message(writer, {
@@ -37,7 +37,7 @@ class DownloadManager:
         await read_message(reader)
         self._peers[address][2] = time.time() - self._peers[address][2]
 
-    async def _test_multi_peer_rtt(self, addresses):
+    async def _update_multi_peer_rtt(self, addresses):
         """ Test multiple peer's rtt, must have registered in _peers"""
         read_coros = set()
         for address in addresses:
