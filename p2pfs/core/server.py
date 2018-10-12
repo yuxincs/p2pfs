@@ -61,8 +61,9 @@ class MessageServer:
             self._server.close()
             await self._server.wait_closed()
             for writer in set(self._writers):
-                writer.close()
-                await writer.wait_closed()
+                if not writer.is_closing():
+                    writer.close()
+                    await writer.wait_closed()
 
             if len(self._writers) != 0:
                 logger.warning('Writers not fully cleared {}'.format(self._writers))
