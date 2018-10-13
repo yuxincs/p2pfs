@@ -407,9 +407,8 @@ class Peer(MessageServer):
                     dest_file.write(data)
                     dest_file.flush()
                 if reporthook:
-                    if reporthook:
-                        finished_chunknum, file_size = download_manager.get_progress()
-                        reporthook(finished_chunknum, Peer._CHUNK_SIZE, file_size)
+                    finished_chunknum, file_size = download_manager.get_progress()
+                    reporthook(finished_chunknum, Peer._CHUNK_SIZE, file_size)
         finally:
             await download_manager.clean()
 
