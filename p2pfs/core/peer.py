@@ -121,6 +121,7 @@ class DownloadManager:
                 if chunknum in self._file_chunk_info:
                     self._file_chunk_info[chunknum].add(address)
 
+        # sort the to-download queue based on rareness
         self._to_download_chunk.sort(key=lambda num: len(self._file_chunk_info[num]))
 
     async def _send_request_chunk(self, chunknum):
