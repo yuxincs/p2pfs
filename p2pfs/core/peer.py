@@ -8,7 +8,7 @@ import asyncio
 import pybase64
 from p2pfs.core.message import MessageType, read_message, write_message
 from p2pfs.core.server import MessageServer
-from p2pfs.core.exceptions import DownloadIncompleteError
+from p2pfs.core.exceptions import *
 logger = logging.getLogger(__name__)
 
 

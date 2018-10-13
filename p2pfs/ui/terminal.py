@@ -1,6 +1,8 @@
+from asyncio import IncompleteReadError
 from beautifultable import BeautifulTable
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
+from p2pfs.core.exceptions import *
 import p2pfs.ui.aiocmd as aiocmd
 import logging
 
