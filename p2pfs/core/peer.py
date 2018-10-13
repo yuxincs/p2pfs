@@ -145,6 +145,10 @@ class DownloadManager:
             pass
         self._pending_chunknum[chunknum] = fastest_peer
 
+    def get_progress(self):
+        """ Returns finished_chunknum, total_file_size """
+        return self._fileinfo['total_chunknum'] - len(self._file_chunk_info), self._fileinfo['size']
+
     async def download(self):
         # first update chunkinfo
         await self.update_chunkinfo()
@@ -394,6 +398,10 @@ class Peer(MessageServer):
                     dest_file.seek(chunknum * Peer._CHUNK_SIZE, 0)
                     dest_file.write(data)
                     dest_file.flush()
+                if reporthook:
+                    if reporthook:
+                        finished_chunknum, file_size =  download_manager.get_progress()
+                        reporthook(finished_chunknum, Peer._CHUNK_SIZE, file_size)
         finally:
             await download_manager.clean()
 
