@@ -35,32 +35,39 @@ class DownloadManager:
         self._is_connected = True
 
     async def _update_peer_rtt(self, addresses):
-        """ Test multiple peer's rtt, must have registered in _peers, remove the registration if cannot connect"""
+        """ Test multiple peer's rtt, must have registered in _peers"""
         # read_coro -> address
-        read_coros = {}
+        read_tasks = set()
         for address in addresses:
             reader, writer, _ = self._peers[address]
             try:
                 # send out ping packet
                 await write_message(writer, {
-                    'type': MessageType.PEER_PING_PONG
+                    'type': MessageType.PEER_PING_PONG,
+                    'peer_address': address
                 })
                 # register read task
-                read_coros[read_message(reader)] = address
+                read_tasks.add(asyncio.ensure_future(read_message(reader)))
                 # set current time
                 self._peers[address][2] = time.time()
             except ConnectionError:
-                del self._peers[address]
+                # if cannot send ping pong packet to peer, the rtt remains math.inf
+                # won't cause trouble
+                pass
         # start reading from peers to get pong packets
-        # read_task -> address
-        read_tasks = {asyncio.ensure_future(read_coro): address for read_coro, address in read_coros.items()}
         for done in asyncio.as_completed(read_tasks):
-            address = read_tasks[done]
             try:
-                await done
+                message = await done
+                address = message['peer_address']
                 self._peers[address][2] = time.time() - self._peers[address][2]
             except asyncio.IncompleteReadError:
-                del self._peers[address]
+                # Trick: if cannot read ping pong packet from peer, the rtt should reset to math.inf
+                # however, since time.time() is relatively large enough to be similar to math.inf
+                # it won't cause trouble
+                pass
+        # we will hide exceptions here since the exceptions will re-arise when we do read task in download main body
+        # we will handle the exceptions there
+
 
     async def _request_chunkinfo(self):
         await write_message(self._tracker_writer, {
