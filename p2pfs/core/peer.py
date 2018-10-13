@@ -27,10 +27,8 @@ class DownloadManager:
         # to download queue
         self._to_download_chunk = None
 
-        # peers and their read tasks
         # peer_address -> [reader, writer, RTT]
         self._peers = {}
-        self._read_tasks = {}
 
         # indicating the tracker's connectivity
         self._is_connected = True
@@ -123,6 +121,17 @@ class DownloadManager:
                     self._file_chunk_info[chunknum].add(address)
 
         self._to_download_chunk.sort(key=lambda num: len(self._file_chunk_info[num]))
+
+    async def _send_request_chunk(self, chunknum):
+        if len(self._file_chunk_info[chunknum]) == 0:
+            raise asyncio.IncompleteReadError(expected=self._total_chunknum, partial=chunknum)
+        fastest_peer = min(self._file_chunk_info[chunknum], key=lambda address: self._file_chunk_info[address][2])
+        await write_message(self._peers[fastest_peer][1], {
+            'type': MessageType.PEER_REQUEST_CHUNK,
+            'filename': self._filename,
+            'chunknum': chunknum
+        })
+        self._pending_chunknum[chunknum] = fastest_peer
 
     async def download(self):
         # first update chunkinfo
