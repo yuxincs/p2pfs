@@ -214,7 +214,7 @@ class DownloadManager:
 
                     del self._peers[peer_address]
 
-                    await self.update_chunkinfo()
+                    await self.update_chunkinfo(without=peer_address)
 
                     # if the disconnected peer has any pending chunks to receive
                     # request from other peers
