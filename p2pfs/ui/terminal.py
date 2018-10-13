@@ -112,7 +112,7 @@ class PeerTerminal(aiocmd.Cmd):
 
     async def do_list_files(self, arg):
         try:
-            file_list_dict, _ = await self._peer.list_file()
+            await self._peer.list_file()
         except TrackerNotConnectedError:
             print('Tracker is not connected, try \'connect <tracker_ip> <tracker_port>\' to connect.')
         except (ConnectionError, RuntimeError, IncompleteReadError):
