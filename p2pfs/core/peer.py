@@ -51,7 +51,7 @@ class DownloadManager:
                 read_tasks.add(asyncio.ensure_future(read_message(reader)))
                 # set current time
                 self._peers[address][2] = time.time()
-            except ConnectionError:
+            except (ConnectionError, RuntimeError):
                 # if cannot send ping pong packet to peer, the rtt remains math.inf
                 # won't cause trouble
                 pass
