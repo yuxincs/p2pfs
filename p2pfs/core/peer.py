@@ -133,7 +133,7 @@ class DownloadManager:
 
     async def _send_request_chunk(self, chunknum):
         if len(self._file_chunk_info[chunknum]) == 0:
-            raise DownloadIncompleteError(chunknum=chunknum)
+            raise DownloadIncompleteError(message='Download cannot proceed.', chunknum=chunknum)
         fastest_peer = min(self._file_chunk_info[chunknum], key=lambda address: self._peers[address][2])
         try:
             await write_message(self._peers[fastest_peer][1], {
