@@ -144,6 +144,19 @@ class DownloadManager:
         # first update chunkinfo
         await self.update_chunkinfo()
 
+        # works as follows:
+        # to_download is a list of chunknum sorted based on rareness, re-sorted everytime by update_chunk
+        # file_chunk_info contains what peers possess what chunk
+        # pending_chunknum is a set which we have sent out request but haven't received chunk data yet, this is
+        # needed for peer disconnect recovery
+
+        # 1. send out initial windows_size requests packet from to_download (pop off the number)
+        # 2. put the (chunknum, peer) tuple into pending_chunknum set
+        # 3. everytime a chunk data has arrived, remove the chunknum from pending_chunknum and file_chunk_info
+        # 4. if any peer disconnects, remove it from _peers, check if we have sent requests to it
+        #    (using pending_chunk_num), send the same request to alternative peers.
+        # 5. if there's a chunknum which no peers possess, raise asyncio.IncompleteReadError
+        
         # initially schedule chunk requests of sliding window size
         for _ in range(min(self._window_size, self._total_chunknum)):
             chunknum = self._to_download_chunk.pop()
