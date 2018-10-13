@@ -75,6 +75,16 @@ class DownloadManager:
     async def update_chunkinfo(self):
         if not self._is_connected:
             return
+        
+        fileinfo, chunkinfo = await self._request_chunkinfo()
+
+        # peer_address -> (reader, writer)
+        # connect to all peers and do a speed test
+        for address in chunkinfo.keys():
+            # peer_address is a string, since JSON requires keys being strings
+            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address))
+
+        peer_rtts = await self._test_peer_rtt(peers)
 
     async def download(self):
         pass
@@ -229,15 +239,6 @@ class Peer(MessageServer):
             return False, 'Tracker is not connected. try \'connect <tracker_ip> <tracker_port>\''
 
         total_chunknum = fileinfo['total_chunknum']
-
-        # peer_address -> (reader, writer)
-        peers = {}
-        # connect to all peers and do a speed test
-        for peer_address in chunkinfo.keys():
-            # peer_address is a string, since JSON requires keys being strings
-            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address))
-
-        peer_rtts = await self._test_peer_rtt(peers)
 
         # setup initial download plan
         file_chunk_info = {chunknum: set() for chunknum in range(total_chunknum)}
