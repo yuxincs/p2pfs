@@ -2,7 +2,7 @@ import logging
 import json
 import asyncio
 from p2pfs.core.server import MessageServer
-from p2pfs.core.message import MessageType
+from p2pfs.core.message import MessageType, read_message, write_message
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +43,7 @@ class Tracker(MessageServer):
         self._peers[writer] = None
         while not reader.at_eof():
             try:
-                message = await self._read_message(reader)
+                message = await read_message(reader)
             except asyncio.IncompleteReadError:
                 break
 
@@ -51,13 +51,13 @@ class Tracker(MessageServer):
             if message_type == MessageType.REQUEST_REGISTER:
                 # peer_address is a string, since JSON requires keys being strings
                 self._peers[writer] = json.dumps(message['address'])
-                await self._write_message(writer, {
+                await write_message(writer, {
                     'type': MessageType.REPLY_REGISTER
                 })
                 logger.debug(self._peers.values())
             elif message_type == MessageType.REQUEST_PUBLISH:
                 if message['filename'] in self._file_list:
-                    await self._write_message(writer, {
+                    await write_message(writer, {
                         'type': MessageType.REPLY_PUBLISH,
                         'filename': message['filename'],
                         'result': False,
@@ -70,7 +70,7 @@ class Tracker(MessageServer):
                     self._chunkinfo[message['filename']] = {
                         self._peers[writer]: list(range(0, message['fileinfo']['total_chunknum']))
                     }
-                    await self._write_message(writer, {
+                    await write_message(writer, {
                         'type': MessageType.REPLY_PUBLISH,
                         'filename': message['filename'],
                         'result': True,
@@ -79,12 +79,12 @@ class Tracker(MessageServer):
                     logger.info('{} published file {} of {} chunks'
                                 .format(self._peers[writer], message['filename'], message['fileinfo']['total_chunknum']))
             elif message_type == MessageType.REQUEST_FILE_LIST:
-                await self._write_message(writer, {
+                await write_message(writer, {
                     'type': MessageType.REPLY_FILE_LIST,
                     'file_list': self._file_list
                 })
             elif message_type == MessageType.REQUEST_FILE_LOCATION:
-                await self._write_message(writer, {
+                await write_message(writer, {
                     'type': MessageType.REPLY_FILE_LOCATION,
                     'fileinfo': self._file_list[message['filename']],
                     'chunkinfo': self._chunkinfo[message['filename']]
@@ -100,7 +100,7 @@ class Tracker(MessageServer):
                 else:
                     self._chunkinfo[message['filename']][peer_address] = [message['chunknum']]
             else:
-                logger.error('Undefined message: {}'.format(self._message_log(message)))
+                logger.error('Undefined message: {}'.format(message))
 
         peer_address = self._peers[writer]
         # iterate over chunkinfo and remove the chunks this peer has
