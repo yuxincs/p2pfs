@@ -1,7 +1,7 @@
 import os
 import asyncio
 import pytest
-from p2pfs import Peer, Tracker
+from p2pfs import *
 import time
 from tests.conftest import fmd5, setup_tracker_and_peers, TEST_SMALL_FILE, TEST_LARGE_FILE, \
     TEST_SMALL_FILE_SIZE, TEST_LARGE_FILE_SIZE, TEST_SMALL_FILE_1
@@ -36,10 +36,11 @@ async def test_publish_refuse(unused_tcp_port):
     try:
         with open('test_publish_refuse', 'wb') as fout:
             fout.write(os.urandom(100))
-        is_success, _ = await peers[0].publish('test_publish_refuse')
-        assert is_success
-        is_success, _ = await peers[0].publish('test_publish_refuse')
-        assert not is_success
+        await peers[0].publish('test_publish_refuse')
+        with pytest.raises(FileNotFoundError):
+            await peers[0].publish('__not_existed_file')
+        with pytest.raises(FileExistsError):
+            await peers[0].publish('test_publish_refuse')
         os.remove('test_publish_refuse')
     finally:
         await tracker.stop()
@@ -50,16 +51,14 @@ async def test_publish(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
     try:
         # peer0 publishes a small_file and peer1 publishes a large file
-        is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
-        assert is_success
+        await peers[0].publish(TEST_SMALL_FILE)
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
         file_list, _ = await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
-        is_success, _ = await peers[1].publish(TEST_LARGE_FILE)
-        assert is_success
+        await peers[1].publish(TEST_LARGE_FILE)
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
@@ -75,16 +74,14 @@ async def test_download(unused_tcp_port):
     to_cleanup = set()
     try:
         # peer0 publishes a small_file and peer1 publishes a large file
-        is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
-        assert is_success
+        await peers[0].publish(TEST_SMALL_FILE)
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
         file_list, _ = await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
-        is_success, _ = await peers[1].publish(TEST_LARGE_FILE)
-        assert is_success
+        await peers[1].publish(TEST_LARGE_FILE)
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
@@ -138,15 +135,13 @@ async def test_delay(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
 
     # peer0 publishes a small_file and peer1 publishes a large file
-    is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
-    assert is_success
+    await peers[0].publish(TEST_SMALL_FILE)
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
     file_list, _ = await peers[1].list_file()
     assert TEST_SMALL_FILE in file_list
-    is_success, _ = await peers[0].publish(TEST_SMALL_FILE_1)
-    assert is_success
+    await peers[0].publish(TEST_SMALL_FILE_1)
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE_1]['size'] == TEST_SMALL_FILE_SIZE
@@ -180,8 +175,7 @@ async def test_delay(unused_tcp_port):
 async def test_peer_disconnect(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(1, unused_tcp_port)
     try:
-        is_suceess, _ = await peers[0].publish(TEST_SMALL_FILE)
-        assert is_suceess
+        await peers[0].publish(TEST_SMALL_FILE)
         assert TEST_SMALL_FILE in tracker.file_list()
 
         # stop peer and check the file has been removed
@@ -254,8 +248,7 @@ async def test_tracker_download_disconnect(unused_tcp_port):
 
 async def test_peer_restart(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(1, unused_tcp_port)
-    is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
-    assert is_success
+    await peers[0].publish(TEST_SMALL_FILE)
     assert TEST_SMALL_FILE in tracker.file_list()
     is_success, _ = await peers[0].disconnect()
     await asyncio.sleep(0.5)
@@ -263,9 +256,8 @@ async def test_peer_restart(unused_tcp_port):
     assert is_success
     is_success, _ = await peers[0].connect(('localhost', unused_tcp_port))
     assert is_success
-    is_success, _ = await peers[0].publish(TEST_SMALL_FILE)
+    await peers[0].publish(TEST_SMALL_FILE)
     assert TEST_SMALL_FILE in tracker.file_list()
-    assert is_success
 
 
 async def test_tracker_restart(unused_tcp_port):

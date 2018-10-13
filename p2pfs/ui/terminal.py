@@ -62,8 +62,20 @@ class PeerTerminal(aiocmd.Cmd):
 
     async def do_publish(self, arg):
         arg = arg.split(' ')[0]
-        _, message = await self._peer.publish(arg)
-        print(message)
+        try:
+            await self._peer.publish(arg)
+        except FileNotFoundError:
+            print('File {} doesn\'t exist.'.format(arg))
+        except FileExistsError:
+            print('File {} already registered on tracker, use \'list_files\' to see.'.format(arg))
+        except TrackerNotConnectedError:
+            print('Tracker is not connected. Use \'connect <tracker_ip> <tracker_port> to connect.\' ')
+        except (ConnectionError, RuntimeError, IncompleteReadError):
+            print('Error occurred during communications with tracker, try to re-connect.')\
+        except InProgressError:
+            print('Publish file {} already in progress.'.format(arg))
+        else:
+            print('File {} successfully published on tracker.'.format(arg))
 
     async def do_set_delay(self, arg):
         arg = arg.split(' ')[0]

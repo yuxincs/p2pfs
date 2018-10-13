@@ -334,50 +334,59 @@ class Peer(MessageServer):
 
     async def publish(self, local_file, remote_name=None):
         if not os.path.exists(local_file):
-            return False, 'File {} doesn\'t exist'.format(local_file)
+            raise FileNotFoundError()
 
         _, remote_name = os.path.split(local_file) if remote_name is None else remote_name
 
         if remote_name in self._pending_publish:
-            return False, 'Publish file {} already in progress.'.format(local_file)
+            raise InProgressError()
 
         if not await self.is_connected():
-            return False, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
+            raise TrackerNotConnectedError()
 
         self._pending_publish.add(remote_name)
+        try:
+            # send out the request packet
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_PUBLISH,
+                'filename': remote_name,
+                'fileinfo': {
+                    'size': os.stat(local_file).st_size,
+                    'total_chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
+                },
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
+            is_success = message['result']
 
-        # send out the request packet
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_PUBLISH,
-            'filename': remote_name,
-            'fileinfo': {
-                'size': os.stat(local_file).st_size,
-                'total_chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
-            },
-        })
-
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
-        is_success, message = message['result'], message['message']
-
-        if is_success:
-            self._file_map[remote_name] = local_file
-            logger.info('File {} published on server with name {}'.format(local_file, remote_name))
-        else:
-            logger.info('File {} failed to publish, {}'.format(local_file, message))
-
-        self._pending_publish.remove(remote_name)
-        return is_success, message
+            if is_success:
+                self._file_map[remote_name] = local_file
+                logger.info('File {} published on server with name {}'.format(local_file, remote_name))
+            else:
+                logger.info('File {} failed to publish, {}'.format(local_file, message))
+                raise FileExistsError()
+        except (ConnectionError, RuntimeError, asyncio.IncompleteReadError):
+            logger.warning('Error occured during communications with tracker.')
+            raise
+        finally:
+            self._pending_publish.remove(remote_name)
 
     async def list_file(self):
         if not await self.is_connected():
-            return None, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_FILE_LIST,
-        })
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
-        return message['file_list'], 'Success'
+            raise TrackerNotConnectedError()
+        try:
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_FILE_LIST,
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
+            return message['file_list']
+        except (asyncio.IncompleteReadError, ConnectionError, RuntimeError):
+            logger.warning('Error occured during communications with tracker.')
+            if not self._tracker_writer.is_closing():
+                self._tracker_writer.close()
+                await self._tracker_writer.wait_closed()
+            raise
 
     async def download(self, file, destination, reporthook=None):
         # request for file list
