@@ -51,10 +51,6 @@ class MessageServer:
         self._writers.add(writer)
         try:
             await self._process_connection(reader, writer)
-        except ConnectionResetError:
-            # the peer has disconnected, thus the writer will raise ConnectionResetError
-            # which is fine
-            pass
         finally:
             if not writer.is_closing():
                 writer.close()
