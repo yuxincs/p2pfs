@@ -265,5 +265,9 @@ async def test_tracker_restart(unused_tcp_port):
     await asyncio.sleep(0.5)
     is_all_connected = await asyncio.gather(*[peer.is_connected() for peer in peers])
     assert not any(is_all_connected)
+    with pytest.raises(TrackerNotConnectedError):
+        await peers[0].publish(TEST_SMALL_FILE)
+    with pytest.raises(TrackerNotConnectedError):
+        await peers[1].list_file()
     await tracker.start(('localhost', unused_tcp_port))
     assert tracker.is_running()
