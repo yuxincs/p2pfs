@@ -218,7 +218,6 @@ class DownloadManager:
                     # send out request chunk
                     if len(self._to_download_chunk) > 0:
                         chunknum = self._to_download_chunk.pop(0)
-                        await self._send_request_chunk(chunknum)
                         if self._file_chunk_info[chunknum] == 0:
                             await self.update_chunkinfo()
                         await self._send_request_chunk(chunknum)
