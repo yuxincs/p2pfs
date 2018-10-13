@@ -77,7 +77,7 @@ class DownloadManager:
             del chunkinfo[json.dumps(self._server_address)]
         return fileinfo, chunkinfo
 
-    async def update_chunkinfo(self, without=None):
+    async def update_chunkinfo(self, exclude=None):
         """ update internal chunkinfo, doesn't raise exceptions"""
         if not self._is_connected:
             return
@@ -114,7 +114,7 @@ class DownloadManager:
             self._file_chunk_info = {chunknum: set() for chunknum in self._file_chunk_info.keys()}
         # chunkinfo: {address -> possessed_chunks}
         for address, possessed_chunks in chunkinfo.items():
-            if address == without:
+            if address == exclude:
                 continue
             for chunknum in possessed_chunks:
                 # if chunknum hasn't been successfully downloaded
@@ -214,7 +214,7 @@ class DownloadManager:
 
                     del self._peers[peer_address]
 
-                    await self.update_chunkinfo(without=peer_address)
+                    await self.update_chunkinfo(exclude=peer_address)
 
                     # if the disconnected peer has any pending chunks to receive
                     # request from other peers
