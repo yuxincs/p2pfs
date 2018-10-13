@@ -169,7 +169,7 @@ class DownloadManager:
             await self._send_request_chunk(chunknum)
 
         self._read_tasks = {asyncio.ensure_future(read_message(reader)): address
-                            for address, (reader, _) in self._peers.items()}
+                            for address, (reader, _, _) in self._peers.items()}
 
         while len(self._file_chunk_info) != 0:
             done, _ = await asyncio.wait(self._read_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
