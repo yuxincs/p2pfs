@@ -21,6 +21,12 @@ class DownloadManager:
 
         self._file_chunk_info = None
         self._total_chunknum = -1
+
+        # for disconnect recovery
+        self._pending_chunknum = {}
+        # to download queue
+        self._to_download_chunk = None
+
         # peers and their read tasks
         # peer_address -> [reader, writer, RTT]
         self._peers = {}
@@ -72,7 +78,8 @@ class DownloadManager:
             del chunkinfo[json.dumps(self._server_address)]
         return fileinfo, chunkinfo
 
-    async def update_chunkinfo(self):
+    async def update_chunkinfo(self, without=None):
+        """ update internal chunkinfo, doesn't raise exceptions"""
         if not self._is_connected:
             return
         try:
@@ -99,17 +106,23 @@ class DownloadManager:
         await self._update_peer_rtt(to_update_rtts)
 
         # update file chunk info
-
-        # initialize if never initialized
         if not self._file_chunk_info:
+            # initialize if never initialized
             self._file_chunk_info = {chunknum: set() for chunknum in range(self._total_chunknum)}
-
+            self._to_download_chunk = list(self._file_chunk_info.keys())
+        else:
+            # reset the chunk info
+            self._file_chunk_info = {chunknum: set() for chunknum in self._file_chunk_info.keys()}
         # chunkinfo: {address -> possessed_chunks}
         for address, possessed_chunks in chunkinfo.items():
+            if address == without:
+                continue
             for chunknum in possessed_chunks:
                 # if chunknum hasn't been successfully downloaded
                 if chunknum in self._file_chunk_info:
                     self._file_chunk_info[chunknum].add(address)
+
+        self._to_download_chunk.sort(key=lambda num: len(self._file_chunk_info[num]))
 
     async def download(self):
         # first update chunkinfo
