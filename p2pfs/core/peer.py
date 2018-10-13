@@ -200,8 +200,6 @@ class DownloadManager:
                         self._read_tasks[asyncio.ensure_future(read_message(reader))] = peer_address
                         continue
 
-                    yield number, raw_data
-
                     # remove successfully-received chunk from pending and download plans
                     del self._file_chunk_info[number]
                     del self._pending_chunknum[number]
@@ -216,6 +214,8 @@ class DownloadManager:
                     except (ConnectionError, RuntimeError):
                         # stop querying tracker
                         pass
+                    
+                    yield number, raw_data
 
                     # send out request chunk
                     if len(self._to_download_chunk) > 0:
