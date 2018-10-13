@@ -42,7 +42,7 @@ class DownloadManager:
                 read_coros[read_message(reader)] = address
                 # set current time
                 self._peers[address][2] = time.time()
-            except (BrokenPipeError, RuntimeError, ConnectionResetError):
+            except ConnectionError:
                 del self._peers[address]
         # start reading from peers to get pong packets
         # read_task -> address
@@ -75,7 +75,7 @@ class DownloadManager:
             return
         try:
             fileinfo, chunkinfo = await self._request_chunkinfo()
-        except (asyncio.IncompleteReadError, BrokenPipeError, ConnectionResetError, RuntimeError):
+        except (asyncio.IncompleteReadError, ConnectionError):
             # if tracker is down
             self._is_connected = False
             return
@@ -133,7 +133,7 @@ class Peer(MessageServer):
         # tracker disconnects suddenly
         try:
             await self._tracker_writer.drain()
-        except (ConnectionResetError, BrokenPipeError):
+        except ConnectionError:
             can_write = False
             if not self._tracker_writer.is_closing():
                 self._tracker_writer.close()
@@ -407,7 +407,7 @@ class Peer(MessageServer):
                                     for number in possessed_chunks:
                                         if number in file_chunk_info and address != peer_address:
                                             file_chunk_info[number].add(address)
-                            except (ConnectionResetError, RuntimeError, BrokenPipeError):
+                            except ConnectionError:
                                 pass
 
                             # if the disconnected peer has any pending chunks to receive
@@ -462,5 +462,5 @@ class Peer(MessageServer):
                     await write_message(writer, message)
                 else:
                     logger.error('Undefined message: {}'.format(message))
-            except (asyncio.IncompleteReadError, ConnectionError, BrokenPipeError):
+            except (asyncio.IncompleteReadError, ConnectionError):
                 break
