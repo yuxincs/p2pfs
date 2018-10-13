@@ -8,6 +8,7 @@ import asyncio
 import pybase64
 from p2pfs.core.message import MessageType, read_message, write_message
 from p2pfs.core.server import MessageServer
+from p2pfs.core.exceptions import DownloadIncompleteError
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +132,7 @@ class DownloadManager:
 
     async def _send_request_chunk(self, chunknum):
         if len(self._file_chunk_info[chunknum]) == 0:
-            raise asyncio.IncompleteReadError(expected=self._fileinfo['total_chunknum'], partial=chunknum)
+            raise DownloadIncompleteError(chunknum=chunknum)
         fastest_peer = min(self._file_chunk_info[chunknum], key=lambda address: self._peers[address][2])
         try:
             await write_message(self._peers[fastest_peer][1], {
