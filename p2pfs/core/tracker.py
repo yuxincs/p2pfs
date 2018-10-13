@@ -25,6 +25,9 @@ class Tracker(MessageServer):
     def peers(self):
         return tuple(self._peers.values())
 
+    def address(self):
+        return self._server_address
+
     def _reset(self):
         self._peers = {}
         self._file_list = {}

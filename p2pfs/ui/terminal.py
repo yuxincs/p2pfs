@@ -31,6 +31,7 @@ class TrackerTerminal(aiocmd.Cmd):
                     print('Cannot bind on address {}:{}.'.format(arg[0], arg[1]))
                 else:
                     raise
+        print('Tracker started listening on {}'.format(self._tracker.address()))
 
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
