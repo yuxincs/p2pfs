@@ -57,16 +57,16 @@ class DownloadManager:
             address = message['peer_address']
             self._peers[address][2] = time.time() - self._peers[address][2]
 
-    async def _request_chunkinfo(self, filename):
+    async def _request_chunkinfo(self):
         await write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
-            'filename': filename
+            'filename': self._filename
         })
 
         message = await read_message(self._tracker_reader)
         assert MessageType(message['type']) == MessageType.REPLY_FILE_LOCATION
         fileinfo, chunkinfo = message['fileinfo'], message['chunkinfo']
-        logger.debug('{}: {} ==> {}'.format(filename, fileinfo, chunkinfo))
+        logger.debug('{}: {} ==> {}'.format(self._filename, fileinfo, chunkinfo))
         # cancel out self registration
         if json.dumps(self._server_address) in chunkinfo:
             del chunkinfo[json.dumps(self._server_address)]
