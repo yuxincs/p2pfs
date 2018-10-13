@@ -68,7 +68,6 @@ class DownloadManager:
         # we will hide exceptions here since the exceptions will re-arise when we do read task in download main body
         # we will handle the exceptions there
 
-
     async def _request_chunkinfo(self):
         await write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
