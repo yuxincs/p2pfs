@@ -1,3 +1,4 @@
+import os
 from asyncio import IncompleteReadError
 from beautifultable import BeautifulTable
 from p2pfs.core.tracker import Tracker
@@ -132,14 +133,27 @@ class PeerTerminal(aiocmd.Cmd):
                 last_chunk[0] = chunknum
 
             return update_to
+        try:
+            with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
+                # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
+                hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
 
-        with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
-            # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
-            hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
-
-            _, message = await self._peer.download(filename, destination, reporthook=hook)
-
-        print(message)
+                _ = await self._peer.download(filename, destination, reporthook=hook)
+        except TrackerNotConnectedError:
+            print('Tracker not connected, cannot pull initial chunk information.')
+        except FileNotFoundError:
+            print('File {} doesn\'t exist, please check filename and try again.'.format(filename))
+        except (IncompleteReadError, ConnectionError, RuntimeError):
+            print('Error occurred during transmission.')
+        except DownloadIncompleteError as e:
+            print('File chunk # {} doesn\'t exist on any peers, download isn\'t completed.'.format(e.chunknum))
+            # try to remove incomplete file
+            try:
+                os.remove(destination)
+            except FileNotFoundError:
+                pass
+        else:
+            print('File {} successfully downloaded to {}.'.format(filename, destination))
 
     async def do_exit(self, arg):
         await self._peer.stop()

@@ -387,9 +387,10 @@ class Peer(MessageServer):
 
     async def download(self, file, destination, reporthook=None):
         # request for file list
-        file_list, _ = await self.list_file()
+        file_list = await self.list_file()
+
         if not file_list or file not in file_list:
-            return False, 'Requested file {} does not exist.'.format(file)
+            raise FileNotFoundError()
 
         download_manager = DownloadManager(self._tracker_reader, self._tracker_writer, file,
                                            server_address=self._server_address, window_size=30)
@@ -414,7 +415,7 @@ class Peer(MessageServer):
             # change the temp file into the actual file
             os.rename(destination + '.temp', destination)
 
-        return True, 'File {} dowloaded to {}'.format(file, destination)
+        return
 
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)
