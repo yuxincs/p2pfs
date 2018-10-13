@@ -20,8 +20,7 @@ async def test_server_refused(unused_tcp_port):
     peer = Peer()
     started = await peer.start(('localhost', 0))
     assert started
-    is_success, _ = await peer.connect(('localhost', unused_tcp_port))
-    assert not is_success
+    await peer.connect(('localhost', unused_tcp_port))
 
 
 async def test_start_stop(unused_tcp_port):
@@ -254,8 +253,7 @@ async def test_peer_restart(unused_tcp_port):
     await asyncio.sleep(0.5)
     assert TEST_SMALL_FILE not in tracker.file_list()
     assert is_success
-    is_success, _ = await peers[0].connect(('localhost', unused_tcp_port))
-    assert is_success
+    await peers[0].connect(('localhost', unused_tcp_port))
     await peers[0].publish(TEST_SMALL_FILE)
     assert TEST_SMALL_FILE in tracker.file_list()
 

@@ -88,8 +88,16 @@ class PeerTerminal(aiocmd.Cmd):
         arg = arg.split(' ')
         if len(arg) < 2:
             print('More arguments required! Usage: connect <address> <port>')
-        _, message = await self._peer.connect((arg[0], int(arg[1])))
-        print(message)
+        try:
+            await self._peer.connect((arg[0], int(arg[1])))
+        except AlreadyConnectedError as e:
+            print('Peer already connected to {}.'.format(e.address))
+        except ConnectionRefusedError:
+            print('Cannot connect to tracker.')
+        except (ConnectionError, RuntimeError, IncompleteReadError, AssertionError):
+            print('Error occurred during communications with tracker.')
+        else:
+            print('Successfully connected!')
 
     async def do_list_files(self, arg):
         file_list_dict, _ = await self._peer.list_file()

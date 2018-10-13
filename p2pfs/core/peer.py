@@ -289,24 +289,26 @@ class Peer(MessageServer):
 
     async def connect(self, tracker_address, loop=None):
         if await self.is_connected():
-            return False, 'Already connected!'
-        # connect to server
+            raise AlreadyConnectedError(address=self._tracker_writer.get_extra_info('peername'))
         try:
+            # connect to server
             self._tracker_reader, self._tracker_writer = \
                 await asyncio.open_connection(*tracker_address, loop=loop)
-        except ConnectionRefusedError:
-            logger.error('Server connection refused!')
-            return False, 'Server connection refused!'
-        # send out register message
-        logger.info('Requesting to register')
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_REGISTER,
-            'address': self._server_address
-        })
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_REGISTER
+            # send out register message
+            logger.info('Requesting to register')
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_REGISTER,
+                'address': self._server_address
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_REGISTER
+        except (ConnectionError, RuntimeError, asyncio.IncompleteReadError):
+            logger.warning('Error occurred during communications with tracker.')
+            if not self._tracker_writer.is_closing():
+                self._tracker_writer.close()
+                await self._tracker_writer.wait_closed()
+            raise
         logger.info('Successfully registered.')
-        return True, 'Connected!'
 
     async def disconnect(self):
         if not self._tracker_writer or self._tracker_writer.is_closing():
