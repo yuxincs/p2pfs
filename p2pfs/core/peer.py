@@ -437,5 +437,5 @@ class Peer(MessageServer):
                     await write_message(writer, message)
                 else:
                     logger.error('Undefined message: {}'.format(message))
-            except (asyncio.IncompleteReadError, ConnectionError):
+            except (asyncio.IncompleteReadError, ConnectionError, RuntimeError):
                 break
