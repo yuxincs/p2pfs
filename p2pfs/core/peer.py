@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class DownloadManager:
-    def __init__(self, tracker_reader, tracker_writer, filename, server_address):
+    def __init__(self, tracker_reader, tracker_writer, filename, server_address, window_size):
         self._tracker_reader = tracker_reader
         self._tracker_writer = tracker_writer
         self._filename = filename
         self._server_address = server_address
+        self._window_size = window_size
 
         self._file_chunk_info = None
         self._total_chunknum = -1
