@@ -73,8 +73,12 @@ class DownloadManager:
     async def update_chunkinfo(self):
         if not self._is_connected:
             return
-        
-        fileinfo, chunkinfo = await self._request_chunkinfo()
+        try:
+            fileinfo, chunkinfo = await self._request_chunkinfo()
+        except (asyncio.IncompleteReadError, BrokenPipeError, ConnectionResetError, RuntimeError):
+            # if tracker is down
+            self._is_connected = False
+            return
 
         to_update_rtts = set()
         # peer_address -> (reader, writer)
