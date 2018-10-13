@@ -74,11 +74,14 @@ class DownloadManager:
         for address in chunkinfo.keys():
             # peer_address is a string, since JSON requires keys being strings
             if address not in self._peers:
-                reader, writer = await asyncio.open_connection(*json.loads(address))
-                self._peers[address] = [reader, writer, math.inf]
-                to_update_rtts.add(address)
+                try:
+                    reader, writer = await asyncio.open_connection(*json.loads(address))
+                    self._peers[address] = [reader, writer, math.inf]
+                    to_update_rtts.add(address)
+                except ConnectionRefusedError:
+                    continue
 
-        await self._update_multi_peer_rtt(to_update_rtts)
+        await self._update_peer_rtt(to_update_rtts)
 
     async def download(self):
         pass
