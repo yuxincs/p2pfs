@@ -36,7 +36,7 @@ class DownloadManager:
         self._is_connected = True
 
     async def _update_peer_rtt(self, addresses):
-        """ Test multiple peer's rtt, must have registered in _peers"""
+        """ Test multiple peer's rtt, must have registered in _peers, doesn't raise exceptions"""
         # read_coro -> address
         read_tasks = set()
         for address in addresses:
@@ -70,6 +70,7 @@ class DownloadManager:
         # when we do read task in download main body and we will handle the exceptions there
 
     async def _request_chunkinfo(self):
+        """ send request chunkinfo to tracker, will raise exceptions """
         await write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
             'filename': self._filename
