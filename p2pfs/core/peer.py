@@ -18,7 +18,7 @@ class DownloadManager:
         self._filename = filename
         self._server_address = server_address
 
-        self._file_chunk_info = {}
+        self._file_chunk_info = None
         # peers and their read tasks
         # peer_address -> [reader, writer, RTT]
         self._peers = {}
@@ -95,8 +95,22 @@ class DownloadManager:
 
         await self._update_peer_rtt(to_update_rtts)
 
+        # update file chunk info
+
+        # initialize if never initialized
+        if not self._file_chunk_info:
+            self._file_chunk_info = {chunknum: set() for chunknum in range(fileinfo['total_chunknum'])}
+
+        # chunkinfo: {address -> possessed_chunks}
+        for address, possessed_chunks in chunkinfo.items():
+            for chunknum in possessed_chunks:
+                # if chunknum hasn't been successfully downloaded
+                if chunknum in self._file_chunk_info:
+                    self._file_chunk_info[chunknum].add(address)
+
     async def download(self):
-        pass
+        # first update chunkinfo
+        await self.update_chunkinfo()
 
     async def clean(self):
         # cancel current reading tasks
@@ -240,20 +254,6 @@ class Peer(MessageServer):
             return False, 'Requested file {} does not exist.'.format(file)
 
         download_manager = DownloadManager(self._tracker_reader, self._tracker_writer, file, self._server_address)
-
-        try:
-            await download_manager.update_chunkinfo()
-        except ConnectionResetError:
-            logger.warning('tracker not connected')
-            return False, 'Tracker is not connected. try \'connect <tracker_ip> <tracker_port>\''
-
-        total_chunknum = fileinfo['total_chunknum']
-
-        # setup initial download plan
-        file_chunk_info = {chunknum: set() for chunknum in range(total_chunknum)}
-        for peer_address, peer_chunks in chunkinfo.items():
-            for chunknum in peer_chunks:
-                file_chunk_info[chunknum].add(peer_address)
 
         # update chunkinfo every UPDATE_FREQUENCY chunks
         update_frequency = 30
