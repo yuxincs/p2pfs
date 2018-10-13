@@ -20,7 +20,7 @@ class DownloadManager:
         self._window_size = window_size
 
         self._file_chunk_info = None
-        self._total_chunknum = -1
+        self._fileinfo = None
 
         # for disconnect recovery
         self._pending_chunknum = {}
@@ -88,8 +88,7 @@ class DownloadManager:
         if not self._is_connected:
             return
         try:
-            fileinfo, chunkinfo = await self._request_chunkinfo()
-            self._total_chunknum = fileinfo['total_chunknum']
+            self._fileinfo, chunkinfo = await self._request_chunkinfo()
         except (asyncio.IncompleteReadError, ConnectionError):
             # if tracker is down
             self._is_connected = False
@@ -113,7 +112,7 @@ class DownloadManager:
         # update file chunk info
         if not self._file_chunk_info:
             # initialize if never initialized
-            self._file_chunk_info = {chunknum: set() for chunknum in range(self._total_chunknum)}
+            self._file_chunk_info = {chunknum: set() for chunknum in range(self._fileinfo['total_chunknum'])}
             self._to_download_chunk = list(self._file_chunk_info.keys())
         else:
             # reset the chunk info
@@ -132,7 +131,7 @@ class DownloadManager:
 
     async def _send_request_chunk(self, chunknum):
         if len(self._file_chunk_info[chunknum]) == 0:
-            raise asyncio.IncompleteReadError(expected=self._total_chunknum, partial=chunknum)
+            raise asyncio.IncompleteReadError(expected=self._fileinfo['total_chunknum'], partial=chunknum)
         fastest_peer = min(self._file_chunk_info[chunknum], key=lambda address: self._peers[address][2])
         try:
             await write_message(self._peers[fastest_peer][1], {
@@ -164,7 +163,7 @@ class DownloadManager:
         # 5. if there's a chunknum which no peers possess, raise asyncio.IncompleteReadError
 
         # initially schedule chunk requests of sliding window size
-        for _ in range(min(self._window_size, self._total_chunknum)):
+        for _ in range(min(self._window_size, self._fileinfo['total_chunknum'])):
             chunknum = self._to_download_chunk.pop()
             await self._send_request_chunk(chunknum)
 
