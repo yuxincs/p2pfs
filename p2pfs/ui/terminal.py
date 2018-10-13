@@ -80,9 +80,10 @@ class PeerTerminal(aiocmd.Cmd):
     async def do_set_delay(self, arg):
         arg = arg.split(' ')[0]
         if arg == '':
-            print('delay is required.')
+            print('Usage: set_delay <delay>, <delay> is required.')
         else:
             self._peer.set_delay(float(arg))
+            print('Delay {} successfully set.'.format(arg))
 
     async def do_connect(self, arg):
         arg = arg.split(' ')
