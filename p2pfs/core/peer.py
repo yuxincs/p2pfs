@@ -66,8 +66,8 @@ class DownloadManager:
                 # however, since time.time() is relatively large enough to be similar to math.inf
                 # it won't cause trouble
                 pass
-        # we will hide exceptions here since the exceptions will re-arise when we do read task in download main body
-        # we will handle the exceptions there
+        # Note: we will hide exceptions here since the exceptions will re-arise
+        # when we do read task in download main body and we will handle the exceptions there
 
     async def _request_chunkinfo(self):
         await write_message(self._tracker_writer, {
