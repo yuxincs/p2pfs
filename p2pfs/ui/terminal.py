@@ -1,6 +1,9 @@
+import os
+from asyncio import IncompleteReadError
 from beautifultable import BeautifulTable
 from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
+from p2pfs.core.exceptions import *
 import p2pfs.ui.aiocmd as aiocmd
 import logging
 
@@ -19,7 +22,16 @@ class TrackerTerminal(aiocmd.Cmd):
         if len(arg) < 2:
             print('Not enough argument, start <host> <port>')
         else:
-            await self._tracker.start((arg[0], int(arg[1])))
+            try:
+                await self._tracker.start((arg[0], int(arg[1])))
+            except ServerRunningError:
+                print('Tracker is already running.')
+            except OSError as e:
+                if e.errno == 48:
+                    print('Cannot bind on address {}:{}.'.format(arg[0], arg[1]))
+                else:
+                    raise
+        print('Tracker started listening on {}'.format(self._tracker.address()))
 
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
@@ -60,33 +72,61 @@ class PeerTerminal(aiocmd.Cmd):
 
     async def do_publish(self, arg):
         arg = arg.split(' ')[0]
-        _, message = await self._peer.publish(arg)
-        print(message)
+        try:
+            await self._peer.publish(arg)
+        except FileNotFoundError:
+            print('File {} doesn\'t exist.'.format(arg))
+        except FileExistsError:
+            print('File {} already registered on tracker, use \'list_files\' to see.'.format(arg))
+        except TrackerNotConnectedError:
+            print('Tracker is not connected. Use \'connect <tracker_ip> <tracker_port> to connect.\' ')
+        except (ConnectionError, RuntimeError, IncompleteReadError):
+            print('Error occurred during communications with tracker, try to re-connect.')
+        except InProgressError:
+            print('Publish file {} already in progress.'.format(arg))
+        else:
+            print('File {} successfully published on tracker.'.format(arg))
 
     async def do_set_delay(self, arg):
         arg = arg.split(' ')[0]
         if arg == '':
-            print('delay is required.')
+            print('Usage: set_delay <delay>, <delay> is required.')
         else:
             self._peer.set_delay(float(arg))
+            print('Delay {} successfully set.'.format(arg))
 
     async def do_connect(self, arg):
         arg = arg.split(' ')
         if len(arg) < 2:
             print('More arguments required! Usage: connect <address> <port>')
-        _, message = await self._peer.connect((arg[0], int(arg[1])))
-        print(message)
+        try:
+            await self._peer.connect((arg[0], int(arg[1])))
+        except AlreadyConnectedError as e:
+            print('Peer already connected to {}.'.format(e.address))
+        except ConnectionRefusedError:
+            print('Cannot connect to tracker.')
+        except (ConnectionError, RuntimeError, IncompleteReadError, AssertionError):
+            print('Error occurred during communications with tracker.')
+        else:
+            print('Successfully connected!')
 
     async def do_list_files(self, arg):
-        file_list_dict, _ = await self._peer.list_file()
-        table = BeautifulTable()
-        table.row_separator_char = ''
+        try:
+            file_list_dict = await self._peer.list_file()
+        except TrackerNotConnectedError:
+            print('Tracker is not connected, try \'connect <tracker_ip> <tracker_port>\' to connect.')
+        except (ConnectionError, RuntimeError, IncompleteReadError):
+            print('Error occured during communications with tracker, '
+                  'try \'connect <tracker_ip> <tracker_port>\' to re-connect.')
+        else:
+            table = BeautifulTable()
+            table.row_separator_char = ''
 
-        for filename, fileinfo in file_list_dict.items():
-            if table.column_count == 0:
-                table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-            table.append_row((filename,) + tuple(fileinfo.values()))
-        print(table)
+            for filename, fileinfo in file_list_dict.items():
+                if table.column_count == 0:
+                    table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+                table.append_row((filename,) + tuple(fileinfo.values()))
+            print(table)
 
     async def do_download(self, arg):
         filename, destination, *_ = arg.split(' ')
@@ -102,14 +142,27 @@ class PeerTerminal(aiocmd.Cmd):
                 last_chunk[0] = chunknum
 
             return update_to
+        try:
+            with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
+                # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
+                hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
 
-        with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc='Downloading ...') as t:
-            # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
-            hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
-
-            _, message = await self._peer.download(filename, destination, reporthook=hook)
-
-        print(message)
+                await self._peer.download(filename, destination, reporthook=hook)
+        except TrackerNotConnectedError:
+            print('Tracker not connected, cannot pull initial chunk information.')
+        except FileNotFoundError:
+            print('File {} doesn\'t exist, please check filename and try again.'.format(filename))
+        except (IncompleteReadError, ConnectionError, RuntimeError):
+            print('Error occurred during transmission.')
+        except DownloadIncompleteError as e:
+            print('File chunk # {} doesn\'t exist on any peers, download isn\'t completed.'.format(e.chunknum))
+            # try to remove incomplete file
+            try:
+                os.remove(destination)
+            except FileNotFoundError:
+                pass
+        else:
+            print('File {} successfully downloaded to {}.'.format(filename, destination))
 
     async def do_exit(self, arg):
         await self._peer.stop()

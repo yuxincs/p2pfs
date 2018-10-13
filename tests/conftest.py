@@ -27,12 +27,10 @@ def fmd5(fname):
 async def setup_tracker_and_peers(peer_num, tracker_port):
     tracker = Tracker()
     peers = tuple(Peer() for _ in range(peer_num))
-    tracker_started = await tracker.start(('localhost', tracker_port))
+    await tracker.start(('localhost', tracker_port))
     # spawn peers concurrently
-    peers_started = await asyncio.gather(*[peer.start(('localhost', 0)) for peer in peers])
-    assert tracker_started and all(peers_started)
-    peers_connected = await asyncio.gather(*[peer.connect(('localhost', tracker_port)) for peer in peers])
-    assert all(peers_connected)
+    await asyncio.gather(*[peer.start(('localhost', 0)) for peer in peers])
+    await asyncio.gather(*[peer.connect(('localhost', tracker_port)) for peer in peers])
     return tracker, peers
 
 

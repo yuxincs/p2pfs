@@ -25,6 +25,9 @@ class Tracker(MessageServer):
     def peers(self):
         return tuple(self._peers.values())
 
+    def address(self):
+        return self._server_address
+
     def _reset(self):
         self._peers = {}
         self._file_list = {}
@@ -58,8 +61,7 @@ class Tracker(MessageServer):
                         await write_message(writer, {
                             'type': MessageType.REPLY_PUBLISH,
                             'filename': message['filename'],
-                            'result': False,
-                            'message': 'Filename already existed on server!'
+                            'result': False
                         })
                     else:
                         self._file_list[message['filename']] = message['fileinfo']
@@ -72,7 +74,6 @@ class Tracker(MessageServer):
                             'type': MessageType.REPLY_PUBLISH,
                             'filename': message['filename'],
                             'result': True,
-                            'message': 'Success'
                         })
                         logger.info('{} published file {} of {} chunks'
                                     .format(self._peers[writer], message['filename'], message['fileinfo']['total_chunknum']))

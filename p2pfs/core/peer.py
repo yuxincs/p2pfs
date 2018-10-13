@@ -8,7 +8,7 @@ import asyncio
 import pybase64
 from p2pfs.core.message import MessageType, read_message, write_message
 from p2pfs.core.server import MessageServer
-from p2pfs.core.exceptions import DownloadIncompleteError
+from p2pfs.core.exceptions import *
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +36,7 @@ class DownloadManager:
         self._is_connected = True
 
     async def _update_peer_rtt(self, addresses):
-        """ Test multiple peer's rtt, must have registered in _peers"""
+        """ Test multiple peer's rtt, must have registered in _peers, doesn't raise exceptions"""
         # read_coro -> address
         read_tasks = set()
         for address in addresses:
@@ -51,7 +51,7 @@ class DownloadManager:
                 read_tasks.add(asyncio.ensure_future(read_message(reader)))
                 # set current time
                 self._peers[address][2] = time.time()
-            except ConnectionError:
+            except (ConnectionError, RuntimeError):
                 # if cannot send ping pong packet to peer, the rtt remains math.inf
                 # won't cause trouble
                 pass
@@ -66,10 +66,11 @@ class DownloadManager:
                 # however, since time.time() is relatively large enough to be similar to math.inf
                 # it won't cause trouble
                 pass
-        # we will hide exceptions here since the exceptions will re-arise when we do read task in download main body
-        # we will handle the exceptions there
+        # Note: we will hide exceptions here since the exceptions will re-arise
+        # when we do read task in download main body and we will handle the exceptions there
 
     async def _request_chunkinfo(self):
+        """ send request chunkinfo to tracker, will raise exceptions """
         await write_message(self._tracker_writer, {
             'type': MessageType.REQUEST_FILE_LOCATION,
             'filename': self._filename
@@ -90,7 +91,7 @@ class DownloadManager:
             return
         try:
             self._fileinfo, chunkinfo = await self._request_chunkinfo()
-        except (asyncio.IncompleteReadError, ConnectionError):
+        except (asyncio.IncompleteReadError, ConnectionError, RuntimeError):
             # if tracker is down
             self._is_connected = False
             return
@@ -132,7 +133,7 @@ class DownloadManager:
 
     async def _send_request_chunk(self, chunknum):
         if len(self._file_chunk_info[chunknum]) == 0:
-            raise DownloadIncompleteError(chunknum=chunknum)
+            raise DownloadIncompleteError(message='Download cannot proceed.', chunknum=chunknum)
         fastest_peer = min(self._file_chunk_info[chunknum], key=lambda address: self._peers[address][2])
         try:
             await write_message(self._peers[fastest_peer][1], {
@@ -289,35 +290,32 @@ class Peer(MessageServer):
 
     async def connect(self, tracker_address, loop=None):
         if await self.is_connected():
-            return False, 'Already connected!'
+            raise AlreadyConnectedError(address=self._tracker_writer.get_extra_info('peername'))
         # connect to server
+        self._tracker_reader, self._tracker_writer = \
+            await asyncio.open_connection(*tracker_address, loop=loop)
         try:
-            self._tracker_reader, self._tracker_writer = \
-                await asyncio.open_connection(*tracker_address, loop=loop)
-        except ConnectionRefusedError:
-            logger.error('Server connection refused!')
-            return False, 'Server connection refused!'
-        # send out register message
-        logger.info('Requesting to register')
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_REGISTER,
-            'address': self._server_address
-        })
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_REGISTER
+            # send out register message
+            logger.info('Requesting to register')
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_REGISTER,
+                'address': self._server_address
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_REGISTER
+        except (ConnectionError, RuntimeError, asyncio.IncompleteReadError):
+            logger.warning('Error occurred during communications with tracker.')
+            if not self._tracker_writer.is_closing():
+                self._tracker_writer.close()
+                await self._tracker_writer.wait_closed()
+            raise
         logger.info('Successfully registered.')
-        return True, 'Connected!'
 
     async def disconnect(self):
-        if not self._tracker_writer or self._tracker_writer.is_closing():
-            return False, 'Already disconnected'
-        self._tracker_writer.close()
-        await self._tracker_writer.wait_closed()
-
-        self._reset()
-        return True, 'Disconnected!'
-
-    def _reset(self):
+        if not self._tracker_writer.is_closing():
+            self._tracker_writer.close()
+            await self._tracker_writer.wait_closed()
+        # reset variables
         self._pending_publish = set()
         self._delay = 0
         self._file_map = {}
@@ -334,56 +332,66 @@ class Peer(MessageServer):
 
     async def publish(self, local_file, remote_name=None):
         if not os.path.exists(local_file):
-            return False, 'File {} doesn\'t exist'.format(local_file)
+            raise FileNotFoundError()
 
         _, remote_name = os.path.split(local_file) if remote_name is None else remote_name
 
         if remote_name in self._pending_publish:
-            return False, 'Publish file {} already in progress.'.format(local_file)
+            raise InProgressError()
 
         if not await self.is_connected():
-            return False, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
+            raise TrackerNotConnectedError()
 
         self._pending_publish.add(remote_name)
+        try:
+            # send out the request packet
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_PUBLISH,
+                'filename': remote_name,
+                'fileinfo': {
+                    'size': os.stat(local_file).st_size,
+                    'total_chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
+                },
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
+            is_success = message['result']
 
-        # send out the request packet
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_PUBLISH,
-            'filename': remote_name,
-            'fileinfo': {
-                'size': os.stat(local_file).st_size,
-                'total_chunknum': math.ceil(os.stat(local_file).st_size / Peer._CHUNK_SIZE)
-            },
-        })
-
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_PUBLISH
-        is_success, message = message['result'], message['message']
-
-        if is_success:
-            self._file_map[remote_name] = local_file
-            logger.info('File {} published on server with name {}'.format(local_file, remote_name))
-        else:
-            logger.info('File {} failed to publish, {}'.format(local_file, message))
-
-        self._pending_publish.remove(remote_name)
-        return is_success, message
+            if is_success:
+                self._file_map[remote_name] = local_file
+                logger.info('File {} published on server with name {}'.format(local_file, remote_name))
+            else:
+                logger.info('File {} failed to publish, {}'.format(local_file, message))
+                raise FileExistsError()
+        except (ConnectionError, RuntimeError, asyncio.IncompleteReadError):
+            logger.warning('Error occured during communications with tracker.')
+            raise
+        finally:
+            self._pending_publish.remove(remote_name)
 
     async def list_file(self):
         if not await self.is_connected():
-            return None, 'Not connected, try \'connect <tracker_ip> <tracker_port>\''
-        await write_message(self._tracker_writer, {
-            'type': MessageType.REQUEST_FILE_LIST,
-        })
-        message = await read_message(self._tracker_reader)
-        assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
-        return message['file_list'], 'Success'
+            raise TrackerNotConnectedError()
+        try:
+            await write_message(self._tracker_writer, {
+                'type': MessageType.REQUEST_FILE_LIST,
+            })
+            message = await read_message(self._tracker_reader)
+            assert MessageType(message['type']) == MessageType.REPLY_FILE_LIST
+            return message['file_list']
+        except (asyncio.IncompleteReadError, ConnectionError, RuntimeError):
+            logger.warning('Error occured during communications with tracker.')
+            if not self._tracker_writer.is_closing():
+                self._tracker_writer.close()
+                await self._tracker_writer.wait_closed()
+            raise
 
     async def download(self, file, destination, reporthook=None):
         # request for file list
-        file_list, _ = await self.list_file()
+        file_list = await self.list_file()
+
         if not file_list or file not in file_list:
-            return False, 'Requested file {} does not exist.'.format(file)
+            raise FileNotFoundError()
 
         download_manager = DownloadManager(self._tracker_reader, self._tracker_writer, file,
                                            server_address=self._server_address, window_size=30)
@@ -398,7 +406,6 @@ class Peer(MessageServer):
                     dest_file.seek(chunknum * Peer._CHUNK_SIZE, 0)
                     dest_file.write(data)
                     dest_file.flush()
-                if reporthook:
                     if reporthook:
                         finished_chunknum, file_size = download_manager.get_progress()
                         reporthook(finished_chunknum, Peer._CHUNK_SIZE, file_size)
@@ -408,7 +415,7 @@ class Peer(MessageServer):
             # change the temp file into the actual file
             os.rename(destination + '.temp', destination)
 
-        return True, 'File {} dowloaded to {}'.format(file, destination)
+        return
 
     async def _process_connection(self, reader, writer):
         assert isinstance(reader, asyncio.StreamReader) and isinstance(writer, asyncio.StreamWriter)

@@ -31,8 +31,10 @@ def main():
         exit(0)
     try:
         loop.run_until_complete(terminal.cmdloop())
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         pass
+    except Exception as e:
+        logging.error('{}:{}'.format(type(e).__name__, e))
     finally:
         loop.run_until_complete(obj.stop())
         loop.close()
