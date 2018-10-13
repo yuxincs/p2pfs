@@ -71,7 +71,7 @@ class PeerTerminal(aiocmd.Cmd):
         except TrackerNotConnectedError:
             print('Tracker is not connected. Use \'connect <tracker_ip> <tracker_port> to connect.\' ')
         except (ConnectionError, RuntimeError, IncompleteReadError):
-            print('Error occurred during communications with tracker, try to re-connect.')\
+            print('Error occurred during communications with tracker, try to re-connect.')
         except InProgressError:
             print('Publish file {} already in progress.'.format(arg))
         else:
