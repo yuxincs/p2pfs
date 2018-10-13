@@ -28,24 +28,32 @@ class DownloadManager:
         self._is_connected = True
 
     async def _update_peer_rtt(self, addresses):
-        """ Test multiple peer's rtt, must have registered in _peers"""
-        read_coros = set()
+        """ Test multiple peer's rtt, must have registered in _peers, remove the registration if cannot connect"""
+        # read_coro -> address
+        read_coros = {}
         for address in addresses:
             reader, writer, _ = self._peers[address]
-            # send out ping packet
-            await write_message(writer, {
-                'type': MessageType.PEER_PING_PONG,
-                'peer_address': address
-            })
-            # register read task
-            read_coros.add(read_message(reader))
-            # set current time
-            self._peers[address][2] = time.time()
+            try:
+                # send out ping packet
+                await write_message(writer, {
+                    'type': MessageType.PEER_PING_PONG
+                })
+                # register read task
+                read_coros[read_message(reader)] = address
+                # set current time
+                self._peers[address][2] = time.time()
+            except (BrokenPipeError, RuntimeError, ConnectionResetError):
+                del self._peers[address]
         # start reading from peers to get pong packets
-        for done in asyncio.as_completed({asyncio.ensure_future(read_coro) for read_coro in read_coros}):
-            message = await done
-            address = message['peer_address']
-            self._peers[address][2] = time.time() - self._peers[address][2]
+        # read_task -> address
+        read_tasks = {asyncio.ensure_future(read_coro): address for read_coro, address in read_coros}
+        for done in asyncio.as_completed(read_tasks):
+            address = read_tasks[done]
+            try:
+                await done
+                self._peers[address][2] = time.time() - self._peers[address][2]
+            except asyncio.IncompleteReadError:
+                del self._peers[address]
 
     async def _request_chunkinfo(self):
         await write_message(self._tracker_writer, {
