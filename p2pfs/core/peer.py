@@ -91,7 +91,7 @@ class DownloadManager:
             return
         try:
             self._fileinfo, chunkinfo = await self._request_chunkinfo()
-        except (asyncio.IncompleteReadError, ConnectionError):
+        except (asyncio.IncompleteReadError, ConnectionError, RuntimeError):
             # if tracker is down
             self._is_connected = False
             return
