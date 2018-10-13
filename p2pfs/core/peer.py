@@ -19,6 +19,7 @@ class DownloadManager:
         self._server_address = server_address
 
         self._file_chunk_info = None
+        self._total_chunknum = -1
         # peers and their read tasks
         # peer_address -> [reader, writer, RTT]
         self._peers = {}
@@ -75,6 +76,7 @@ class DownloadManager:
             return
         try:
             fileinfo, chunkinfo = await self._request_chunkinfo()
+            self._total_chunknum = fileinfo['total_chunknum']
         except (asyncio.IncompleteReadError, ConnectionError):
             # if tracker is down
             self._is_connected = False
@@ -99,7 +101,7 @@ class DownloadManager:
 
         # initialize if never initialized
         if not self._file_chunk_info:
-            self._file_chunk_info = {chunknum: set() for chunknum in range(fileinfo['total_chunknum'])}
+            self._file_chunk_info = {chunknum: set() for chunknum in range(self._total_chunknum)}
 
         # chunkinfo: {address -> possessed_chunks}
         for address, possessed_chunks in chunkinfo.items():
