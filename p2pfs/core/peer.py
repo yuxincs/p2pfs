@@ -18,7 +18,7 @@ class DownloadManager:
         self._filename = filename
         self._server_address = server_address
 
-        self._chunkinfo = {}
+        self._file_chunk_info = {}
         # peers and their read tasks
         # peer_address -> [reader, writer, RTT]
         self._peers = {}
