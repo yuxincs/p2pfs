@@ -54,14 +54,14 @@ async def test_publish(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-        file_list, _ = await peers[1].list_file()
+        file_list= await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
         await peers[1].publish(TEST_LARGE_FILE)
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
-        file_list, _ = await peers[0].list_file()
+        file_list = await peers[0].list_file()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
     finally:
         await tracker.stop()
@@ -77,14 +77,14 @@ async def test_download(unused_tcp_port):
         file_list = tracker.file_list()
         assert TEST_SMALL_FILE in file_list
         assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-        file_list, _ = await peers[1].list_file()
+        file_list = await peers[1].list_file()
         assert TEST_SMALL_FILE in file_list
 
         await peers[1].publish(TEST_LARGE_FILE)
         file_list = tracker.file_list()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
         assert file_list[TEST_LARGE_FILE]['size'] == TEST_LARGE_FILE_SIZE
-        file_list, _ = await peers[0].list_file()
+        file_list = await peers[0].list_file()
         assert TEST_LARGE_FILE in file_list and TEST_SMALL_FILE in file_list
 
         def reporthook(chunk_num, chunk_size, total_size):
@@ -138,13 +138,13 @@ async def test_delay(unused_tcp_port):
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE]['size'] == TEST_SMALL_FILE_SIZE
-    file_list, _ = await peers[1].list_file()
+    file_list = await peers[1].list_file()
     assert TEST_SMALL_FILE in file_list
     await peers[0].publish(TEST_SMALL_FILE_1)
     file_list = tracker.file_list()
     assert TEST_SMALL_FILE in file_list
     assert file_list[TEST_SMALL_FILE_1]['size'] == TEST_SMALL_FILE_SIZE
-    file_list, _ = await peers[1].list_file()
+    file_list = await peers[1].list_file()
     assert TEST_SMALL_FILE_1 in file_list
     to_cleanup = set()
     try:

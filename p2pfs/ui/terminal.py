@@ -100,15 +100,22 @@ class PeerTerminal(aiocmd.Cmd):
             print('Successfully connected!')
 
     async def do_list_files(self, arg):
-        file_list_dict, _ = await self._peer.list_file()
-        table = BeautifulTable()
-        table.row_separator_char = ''
+        try:
+            file_list_dict, _ = await self._peer.list_file()
+        except TrackerNotConnectedError:
+            print('Tracker is not connected, try \'connect <tracker_ip> <tracker_port>\' to connect.')
+        except (ConnectionError, RuntimeError, IncompleteReadError):
+            print('Error occured during communications with tracker, '
+                  'try \'connect <tracker_ip> <tracker_port>\' to re-connect.')
+        else:
+            table = BeautifulTable()
+            table.row_separator_char = ''
 
-        for filename, fileinfo in file_list_dict.items():
-            if table.column_count == 0:
-                table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-            table.append_row((filename,) + tuple(fileinfo.values()))
-        print(table)
+            for filename, fileinfo in file_list_dict.items():
+                if table.column_count == 0:
+                    table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+                table.append_row((filename,) + tuple(fileinfo.values()))
+            print(table)
 
     async def do_download(self, arg):
         filename, destination, *_ = arg.split(' ')
