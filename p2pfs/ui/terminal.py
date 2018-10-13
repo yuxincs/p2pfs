@@ -146,7 +146,7 @@ class PeerTerminal(aiocmd.Cmd):
                 # no report hook if we need debug logging (too many logs will cause trouble to tqdm)
                 hook = tqdm_hook_wrapper(t) if logging.getLogger().getEffectiveLevel() != logging.DEBUG else None
 
-                _ = await self._peer.download(filename, destination, reporthook=hook)
+                await self._peer.download(filename, destination, reporthook=hook)
         except TrackerNotConnectedError:
             print('Tracker not connected, cannot pull initial chunk information.')
         except FileNotFoundError:
