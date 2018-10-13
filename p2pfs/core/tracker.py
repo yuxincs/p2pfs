@@ -1,7 +1,8 @@
 import logging
 import json
 import asyncio
-from p2pfs.core.server import MessageServer, MessageType
+from p2pfs.core.server import MessageServer
+from p2pfs.core.message import MessageType
 logger = logging.getLogger(__name__)
 
 
