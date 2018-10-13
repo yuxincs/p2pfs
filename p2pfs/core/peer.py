@@ -291,10 +291,10 @@ class Peer(MessageServer):
     async def connect(self, tracker_address, loop=None):
         if await self.is_connected():
             raise AlreadyConnectedError(address=self._tracker_writer.get_extra_info('peername'))
+        # connect to server
+        self._tracker_reader, self._tracker_writer = \
+            await asyncio.open_connection(*tracker_address, loop=loop)
         try:
-            # connect to server
-            self._tracker_reader, self._tracker_writer = \
-                await asyncio.open_connection(*tracker_address, loop=loop)
             # send out register message
             logger.info('Requesting to register')
             await write_message(self._tracker_writer, {
