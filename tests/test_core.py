@@ -95,28 +95,30 @@ async def test_download(unused_tcp_port):
             reporthook.value = (chunk_num, total_size)
 
         # download small file
+        to_cleanup.add('downloaded_' + TEST_SMALL_FILE)
         is_success, _ = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE, reporthook=reporthook)
         assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
         assert is_success
         assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
         assert reporthook.value == (1, 1000)
-        to_cleanup.add('downloaded_' + TEST_SMALL_FILE)
 
         # download large file from single source
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_0')
         is_success, _ = await peers[0].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_0')
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_0')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_0')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_0')
 
         # download large file from multiple sources
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
         is_success, _ = await peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2')
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
 
         # download large file concurrently
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_3')
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_4')
         download_task_1 = peers[3].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_3')
         download_task_2 = peers[4].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_4')
         (is_success_1, _), (is_success_2, _) = await asyncio.gather(download_task_1, download_task_2)
@@ -126,8 +128,6 @@ async def test_download(unused_tcp_port):
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_4')
         assert is_success_2
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_4')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_3')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_4')
     finally:
         cleanup_files(to_cleanup)
         await tracker.stop()
@@ -156,21 +156,21 @@ async def test_delay(unused_tcp_port):
     try:
         # download small file
         start = time.time()
+        to_cleanup.add('downloaded_' + TEST_SMALL_FILE)
         result, msg = await peers[1].download(TEST_SMALL_FILE, 'downloaded_' + TEST_SMALL_FILE)
         assert result is True
         assert os.path.exists('downloaded_' + TEST_SMALL_FILE)
         assert fmd5(TEST_SMALL_FILE) == fmd5('downloaded_' + TEST_SMALL_FILE)
-        to_cleanup.add('downloaded_' + TEST_SMALL_FILE)
 
         download_time = time.time() - start
         start = time.time()
         peers[0].set_delay(1)
+        to_cleanup.add('downloaded_' + TEST_SMALL_FILE_1)
         result, msg = await peers[1].download(TEST_SMALL_FILE_1, 'downloaded_' + TEST_SMALL_FILE_1)
         assert result is True
         download_time_with_delay = time.time() - start
         assert download_time_with_delay > download_time
         peers[0].set_delay(0)
-        to_cleanup.add('downloaded_' + TEST_SMALL_FILE_1)
     finally:
         cleanup_files(to_cleanup)
         await tracker.stop()
@@ -202,11 +202,11 @@ async def test_peer_download_disconnect(unused_tcp_port):
         assert TEST_LARGE_FILE in tracker.file_list()
 
         # download large file from single source
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_1')
         is_success, _ = await peers[1].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_1')
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_1')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_1')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_1')
 
         peers[1].set_delay(0.1)
 
@@ -216,12 +216,12 @@ async def test_peer_download_disconnect(unused_tcp_port):
             await asyncio.sleep(delay)
             await peer.stop()
         # run download and stop peer task concurrently
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
         (is_success, _), _ = await asyncio.gather(peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
                                                   stop_peer_after(peers[0], 1))
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
         cleanup_files(to_cleanup)
         await tracker.stop()
@@ -241,12 +241,12 @@ async def test_tracker_download_disconnect(unused_tcp_port):
             await asyncio.sleep(delay)
             await obj.stop()
         # run download and stop task concurrently
+        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
         (is_success, _), _ = await asyncio.gather(peers[1].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
                                                   stop_after(tracker, 1))
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert is_success
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
-        to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
         cleanup_files(to_cleanup)
         await asyncio.gather(*[peer.stop() for peer in peers])
