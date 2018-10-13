@@ -175,7 +175,7 @@ class DownloadManager:
             for finished_task in done:
                 # remove finished task from read_tasks to stop waiting for next iteration
                 peer_address = self._read_tasks.pop(finished_task)
-                reader, writer = self._peers[peer_address]
+                reader, writer, _ = self._peers[peer_address]
 
                 try:
                     message = finished_task.result()
