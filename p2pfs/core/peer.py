@@ -311,15 +311,10 @@ class Peer(MessageServer):
         logger.info('Successfully registered.')
 
     async def disconnect(self):
-        if not self._tracker_writer or self._tracker_writer.is_closing():
-            return False, 'Already disconnected'
-        self._tracker_writer.close()
-        await self._tracker_writer.wait_closed()
-
-        self._reset()
-        return True, 'Disconnected!'
-
-    def _reset(self):
+        if not self._tracker_writer.is_closing():
+            self._tracker_writer.close()
+            await self._tracker_writer.wait_closed()
+        # reset variables
         self._pending_publish = set()
         self._delay = 0
         self._file_map = {}
