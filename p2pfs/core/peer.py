@@ -230,7 +230,7 @@ class Peer(MessageServer):
         if not file_list or file not in file_list:
             return False, 'Requested file {} does not exist.'.format(file)
 
-        download_manager = DownloadManager(self._tracker_reader, self._tracker_writer)
+        download_manager = DownloadManager(self._tracker_reader, self._tracker_writer, file, self._server_address)
 
         try:
             await download_manager.update_chunkinfo()
