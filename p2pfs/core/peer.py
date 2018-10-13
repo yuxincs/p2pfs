@@ -226,7 +226,7 @@ class DownloadManager:
         for task in self._read_tasks.keys():
             task.cancel()
         # close the connections
-        for _, (_, writer) in self._peers.items():
+        for _, (_, writer, _) in self._peers.items():
             if not writer.is_closing():
                 writer.close()
                 await writer.wait_closed()
