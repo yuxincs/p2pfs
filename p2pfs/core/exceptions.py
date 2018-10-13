@@ -15,3 +15,7 @@ class TrackerNotConnectedError(ConnectionError):
 
 class InProgressError(Exception):
     pass
+
+
+class ServerRunningError(Exception):
+    pass

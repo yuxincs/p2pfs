@@ -22,7 +22,15 @@ class TrackerTerminal(aiocmd.Cmd):
         if len(arg) < 2:
             print('Not enough argument, start <host> <port>')
         else:
-            await self._tracker.start((arg[0], int(arg[1])))
+            try:
+                await self._tracker.start((arg[0], int(arg[1])))
+            except ServerRunningError:
+                print('Tracker is already running.')
+            except OSError as e:
+                if e.errno == 48:
+                    print('Cannot bind on address {}:{}.'.format(arg[0], arg[1]))
+                else:
+                    raise
 
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()

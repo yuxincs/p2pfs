@@ -1,6 +1,7 @@
 from abc import abstractmethod
 import logging
 import asyncio
+from p2pfs.core.exceptions import ServerRunningError
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +23,8 @@ class MessageServer:
         return self._is_running
 
     async def start(self, local_address, loop=None):
+        if self._is_running:
+            raise ServerRunningError()
         logger.info('Start listening on {}'.format(local_address))
         # start server
         self._server = await asyncio.start_server(self.__new_connection, *local_address, loop=loop)
