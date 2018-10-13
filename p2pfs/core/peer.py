@@ -168,7 +168,7 @@ class DownloadManager:
 
         # initially schedule chunk requests of sliding window size
         for _ in range(min(self._window_size, self._fileinfo['total_chunknum'])):
-            chunknum = self._to_download_chunk.pop()
+            chunknum = self._to_download_chunk.pop(0)
             await self._send_request_chunk(chunknum)
 
         self._read_tasks = {asyncio.ensure_future(read_message(reader)): address
