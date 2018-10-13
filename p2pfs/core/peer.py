@@ -27,17 +27,7 @@ class DownloadManager:
         # indicating the tracker's connectivity
         self._is_connected = True
 
-    async def _update_peer_rtt(self, address):
-        reader, writer = self._peers[address]
-        self._peers[address][2] = time.time()
-        await write_message(writer, {
-            'type': MessageType.PEER_PING_PONG,
-            'peer_address': address
-        })
-        await read_message(reader)
-        self._peers[address][2] = time.time() - self._peers[address][2]
-
-    async def _update_multi_peer_rtt(self, addresses):
+    async def _update_peer_rtt(self, addresses):
         """ Test multiple peer's rtt, must have registered in _peers"""
         read_coros = set()
         for address in addresses:
@@ -78,13 +68,17 @@ class DownloadManager:
         
         fileinfo, chunkinfo = await self._request_chunkinfo()
 
+        to_update_rtts = set()
         # peer_address -> (reader, writer)
         # connect to all peers and do a speed test
         for address in chunkinfo.keys():
             # peer_address is a string, since JSON requires keys being strings
-            peers[peer_address] = await asyncio.open_connection(*json.loads(peer_address))
+            if address not in self._peers:
+                reader, writer = await asyncio.open_connection(*json.loads(address))
+                self._peers[address] = [reader, writer, math.inf]
+                to_update_rtts.add(address)
 
-        peer_rtts = await self._test_peer_rtt(peers)
+        await self._update_multi_peer_rtt(to_update_rtts)
 
     async def download(self):
         pass
