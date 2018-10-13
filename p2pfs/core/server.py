@@ -32,7 +32,6 @@ class MessageServer:
         # see https://docs.python.org/3.7/library/socket.html#socket-families
         self._server_address = self._server.sockets[0].getsockname()[:2]
         self._is_running = True
-        return True
 
     async def stop(self):
         if self._is_running:

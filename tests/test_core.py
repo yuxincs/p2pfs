@@ -18,8 +18,7 @@ def cleanup_files(files):
 
 async def test_connect_refused(unused_tcp_port):
     peer = Peer()
-    started = await peer.start(('localhost', 0))
-    assert started
+    await peer.start(('localhost', 0))
     with pytest.raises(ConnectionRefusedError):
         await peer.connect(('localhost', unused_tcp_port))
 
