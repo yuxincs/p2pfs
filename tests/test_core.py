@@ -202,7 +202,7 @@ async def test_peer_download_disconnect(unused_tcp_port):
         # run download and stop peer task concurrently
         to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
         await asyncio.gather(peers[2].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
-                                                  stop_peer_after(peers[0], 1))
+                             stop_peer_after(peers[0], 1))
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
@@ -225,36 +225,45 @@ async def test_tracker_download_disconnect(unused_tcp_port):
         # run download and stop task concurrently
         to_cleanup.add('downloaded_' + TEST_LARGE_FILE + '_2')
         await asyncio.gather(peers[1].download(TEST_LARGE_FILE, 'downloaded_' + TEST_LARGE_FILE + '_2'),
-                                                  stop_after(tracker, 1))
+                             stop_after(tracker, 1))
         assert os.path.exists('downloaded_' + TEST_LARGE_FILE + '_2')
         assert fmd5(TEST_LARGE_FILE) == fmd5('downloaded_' + TEST_LARGE_FILE + '_2')
     finally:
         cleanup_files(to_cleanup)
+        await tracker.stop()
         await asyncio.gather(*[peer.stop() for peer in peers])
 
 
 async def test_peer_restart(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(1, unused_tcp_port)
-    await peers[0].publish(TEST_SMALL_FILE)
-    assert TEST_SMALL_FILE in tracker.file_list()
-    await peers[0].disconnect()
-    await asyncio.sleep(0.5)
-    assert TEST_SMALL_FILE not in tracker.file_list()
-    await peers[0].connect(('localhost', unused_tcp_port))
-    await peers[0].publish(TEST_SMALL_FILE)
-    assert TEST_SMALL_FILE in tracker.file_list()
+    try:
+        await peers[0].publish(TEST_SMALL_FILE)
+        assert TEST_SMALL_FILE in tracker.file_list()
+        await peers[0].disconnect()
+        await asyncio.sleep(0.5)
+        assert TEST_SMALL_FILE not in tracker.file_list()
+        await peers[0].connect(('localhost', unused_tcp_port))
+        await peers[0].publish(TEST_SMALL_FILE)
+        assert TEST_SMALL_FILE in tracker.file_list()
+    finally:
+        await tracker.stop()
+        await asyncio.gather(*[peer.stop() for peer in peers])
 
 
 async def test_tracker_restart(unused_tcp_port):
     tracker, peers = await setup_tracker_and_peers(2, unused_tcp_port)
-    await tracker.stop()
-    assert not tracker.is_running()
-    await asyncio.sleep(0.5)
-    is_all_connected = await asyncio.gather(*[peer.is_connected() for peer in peers])
-    assert not any(is_all_connected)
-    with pytest.raises(TrackerNotConnectedError):
-        await peers[0].publish(TEST_SMALL_FILE)
-    with pytest.raises(TrackerNotConnectedError):
-        await peers[1].list_file()
-    await tracker.start(('localhost', unused_tcp_port))
-    assert tracker.is_running()
+    try:
+        await tracker.stop()
+        assert not tracker.is_running()
+        await asyncio.sleep(0.5)
+        is_all_connected = await asyncio.gather(*[peer.is_connected() for peer in peers])
+        assert not any(is_all_connected)
+        with pytest.raises(TrackerNotConnectedError):
+            await peers[0].publish(TEST_SMALL_FILE)
+        with pytest.raises(TrackerNotConnectedError):
+            await peers[1].list_file()
+        await tracker.start(('localhost', unused_tcp_port))
+        assert tracker.is_running()
+    finally:
+        await tracker.stop()
+        await asyncio.gather(*[peer.stop() for peer in peers])
