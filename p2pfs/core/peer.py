@@ -397,7 +397,7 @@ class Peer(MessageServer):
                                            server_address=self._server_address, window_size=30)
 
         # update chunkinfo every UPDATE_FREQUENCY chunks
-        update_frequency = 30
+        update_frequency = 100
 
         try:
             with open(destination + '.temp', 'wb') as dest_file:
@@ -406,8 +406,10 @@ class Peer(MessageServer):
                     dest_file.seek(chunknum * Peer._CHUNK_SIZE, 0)
                     dest_file.write(data)
                     dest_file.flush()
+                    finished_chunknum, file_size = download_manager.get_progress()
+                    if finished_chunknum % update_frequency == 0:
+                        await download_manager.update_chunkinfo()
                     if reporthook:
-                        finished_chunknum, file_size = download_manager.get_progress()
                         reporthook(finished_chunknum, Peer._CHUNK_SIZE, file_size)
         finally:
             await download_manager.clean()
