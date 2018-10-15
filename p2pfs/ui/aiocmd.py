@@ -31,7 +31,3 @@ class Cmd:
     async def do_help(self, arg):
         print('Available command list:\n{}'
               .format(''.join(tuple('  -  {}\n'.format(method) for method in self._methods))))
-
-
-
-
