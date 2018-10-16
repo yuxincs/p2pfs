@@ -5,6 +5,7 @@ from p2pfs.core.tracker import Tracker
 from p2pfs.core.peer import Peer
 from p2pfs.core.exceptions import *
 import p2pfs.ui.aiocmd as aiocmd
+from aioconsole.stream import get_standard_streams
 import logging
 
 
@@ -42,7 +43,10 @@ class TrackerTerminal(aiocmd.Cmd):
             if table.column_count == 0:
                 table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
             table.append_row((filename, ) + tuple(fileinfo.values()))
-        print(table)
+        _, std_writer = await get_standard_streams()
+        std_writer.write(str(table).encode('utf-8'))
+        std_writer.write('\n'.encode('utf-8'))
+        await std_writer.drain()
 
     async def do_list_peers(self, arg):
         table = BeautifulTable()
@@ -50,11 +54,17 @@ class TrackerTerminal(aiocmd.Cmd):
         table.column_headers = ['Peer Address']
         for peer in self._tracker.peers():
             table.append_row([peer])
-        print(table)
+        _, std_writer = await get_standard_streams()
+        std_writer.write(str(table).encode('utf-8'))
+        std_writer.write('\n'.encode('utf-8'))
+        await std_writer.drain()
 
     async def do_list_chunkinfo(self, arg):
         # TODO: pretty print chunk info
-        print(self._tracker.chunkinfo())
+        _, std_writer = await get_standard_streams()
+        std_writer.write(str(self._tracker.chunkinfo()).encode('utf-8'))
+        std_writer.write('\n'.encode('utf-8'))
+        await std_writer.drain()
 
     async def do_exit(self, arg):
         await self._tracker.stop()
