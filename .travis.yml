@@ -1,8 +1,6 @@
-sudo: true
-
 language: python
 dist: xenial
-python: "3.7"
+python: 3.7
 
 cache: pip
 
@@ -12,15 +10,8 @@ install:
 script:
   - tox
 
-jobs:
-  include:
-    - stage: codecov
-      python: 3.7
-      sudo: true
-      dist: xenial
-      script:
-        - tox
-        - pip install codecov && codecov
+after_success:
+  - curl -s https://codecov.io/bash | bash
 
 notifications:
   email: false
