@@ -73,11 +73,35 @@ We use `JSON` to transfer messages between tracker/peer and peer/peer. Each mess
 | REQUEST_CHUNK_REGISTER | `filename`: Name of the file<br /> `chunknum`: Number of the chunk to register                                                                                            |
 | PEERREQUEST_CHUNK      | `filename`: Name of the file<br /> `chunknum`: Chunk number of the file                                                                                                   |
 | PEER_REPLY_CHUNK       | `filename`: Name of the file<br /> `chunknum`: Chunk number of the file<br /> `data`: BASE64 encoding of the binary data<br /> `digest`: SHA256 digest of the binary data |
-| PEER_PING_PONG         | None. (This is to test peers RTT, the peer will send it back once it receives ad PEER_PING_PONG message) 
+| PEER_PING_PONG         | None. (This is to test peers RTT, the peer will send it back once it receives a PEER_PING_PONG message) 
 
 ## Tracker / Peer Behaviors
 ### Tracker
-TODO
+* `REQUEST_REGISTER`
+
+The tracker sees that a peer attempts to join the system.It adds the peer to its list of peers and sends back a message of type `REPLY_REGISTER`.
+
+* `REQUEST_PUBLISH`
+
+The tracker sees that a peer attempts to share a file.  Ifthis file is not present on its list of files, it adds the fileto the list and update the chunk info on this file.  Thetracker sends back a message of type `REPLY_PUBLISH`.
+
+* `REQUEST_FILE_LIST`
+
+The tracker sees that a peer wants to get a list of filescurrently shared in the system. It sends back a message of type `REPLY_FILE_LIST` containing this list.
+
+* `REQUEST_FILE_LOCATION`
+
+The tracker sees that a peer wants to know which peerhas which chunks about a file. It sends back a messageof  type `REPLY_FILE_LOCATION `containing this information.
+
+* `REQUEST_CHUNK_REGISTER`
+
+When a peer has successfully downloaded a chunk of a file, it will send a message of type `REQUEST_CHUNK_REGISTER` to the tracker. The tracker therefore knows that this peer also has a copy of this chuck of a file. It will update the chunk info accordingly.
 
 ### Peer
-TODO
+* `PEER_REQUEST_CHUNK`
+
+Peer reads the chunk of the file and sends it back.
+
+* `PEER_PING_PONG`
+
+Peer sends back the exact message.
