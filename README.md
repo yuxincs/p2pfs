@@ -1,6 +1,10 @@
 # p2pfs
 [![Build Status](https://travis-ci.com/RyanWangGit/p2pfs.svg?token=6D8zTzZr7SPui6PzhT2a&branch=master)](https://travis-ci.com/RyanWangGit/p2pfs) [![codecov](https://codecov.io/gh/RyanWangGit/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/RyanWangGit/p2pfs)
 
+<p align="center">
+  <img src="https://ryanwanggit.github.io/p2pfs/demo.svg" />
+</p>
+
 File System based on P2P.
 
 The system include multiple clients (also named peers) and one central server. A peer can
@@ -29,7 +33,7 @@ Start listening on `<host>:<port>` for peer connections.
 
 * `list_peers`
 
-Print  the  currently-connected  peers,  this  is  for  debugpurposes.
+Print the currently-connected  peers, this is for debug purposes.
 
 * `exit`
 
@@ -42,7 +46,7 @@ The peer intents to join the system.  It will send a message of type `REQUEST_RE
 
 * `publish <localfile>`
 
-The peer offers to share a file.  It will send a messageof typeREQUESTPUBLISHto the tracker and wait for amessage of type `REPLY_PUBLISH`.
+The peer offers to share a file.  It will send a messageof type `REQUEST_PUBLISH` to the tracker and wait for amessage of type `REPLY_PUBLISH`.
 
 * `list_file`
 
