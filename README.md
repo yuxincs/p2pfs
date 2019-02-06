@@ -18,7 +18,7 @@ peer should be able to download different chunks of the file simultaneously from
 
 Both peer and tracker acts as server **and** client. For a tracker, it only listens for peers to connect to acquire informatoin about the current files and the peers who have the file. For a peer, it connects to tracker to get the information and connects to other peers to get the data. The connections between tracker and peer are always alive, while the connections between peers are disconnected when the file transfer is done.
 
-When downloading, peers will ping other peers to start seeking content from the lowest-latency-peer, note that currently parallel download is not implemented.
+When downloading, peers will ping other peers to start seeking content from the lowest-latency-peer, note that peer will download chunks rarest-first (fewest peers have it) and from the fastest available peer.
 
 The system is designed to be as fail-safe as possible, i.e., peers can shutdown abruptly at any time (during file transfer/when idling, etc.), and trackers can shutdown abruptly at any time, too. The list below shows what the system does when unexpected shutdown happens:
 
