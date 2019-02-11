@@ -22,7 +22,7 @@ When downloading, peers will ping other peers to start seeking content from the 
 
 The system is designed to be as fail-safe as possible, i.e., peers can shutdown abruptly at any time (during file transfer/when idling, etc.), and trackers can shutdown abruptly at any time, too. The list below shows what the system does when unexpected shutdown happens:
 
-* **Tracker shutdown**: Peers won't be able to retieve file/peers information until the it connects to the tracker again (need to manually use the command `connect <tracker_ip> <tracker_port>`). Current file transfers won't be affected (as the peers information has already been downloaded).
+* **Tracker shutdown**: Peers won't be able to retieve file/peers information until it connects to the tracker again (need to manually use the command `connect <tracker_ip> <tracker_port>`). Current file transfers won't be affected (as the peers information has already been downloaded).
 
 * **Peer shutdown**: Current file transfers which the crashed peer doesn't have won't be affected (of course!), for the ones that the crashed peer is involved, the downloading peer will seek other peers for the content. If no other peers have the file the downloading peer will report an error for incomplete tranfer and the tracker will delist the file on its record. 
 
