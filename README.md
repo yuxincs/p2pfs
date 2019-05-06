@@ -1,8 +1,8 @@
 # p2pfs
-[![Build Status](https://travis-ci.com/RyanWangGit/p2pfs.svg?token=6D8zTzZr7SPui6PzhT2a&branch=master)](https://travis-ci.com/RyanWangGit/p2pfs) [![codecov](https://codecov.io/gh/RyanWangGit/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/RyanWangGit/p2pfs)
+[![Build Status](https://travis-ci.com/yxwangcs/p2pfs.svg?token=6D8zTzZr7SPui6PzhT2a&branch=master)](https://travis-ci.com/yxwangcs/p2pfs) [![codecov](https://codecov.io/gh/yxwangcs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yxwangcs/p2pfs)
 
 <p align="center">
-  <img src="https://ryanwanggit.github.io/p2pfs/demo.svg" width="80%"/>
+  <img src="https://yxwangcs.github.io/p2pfs/demo.svg" width="80%"/>
 </p>
 
 File System based on P2P.
@@ -109,3 +109,6 @@ Peer reads the chunk of the file and sends it back.
 * `PEER_PING_PONG`
 
 Peer sends back the exact message.
+
+## License
+[MIT](https://github.com/yxwangcs/p2pfs/blob/master/LICENSE).
