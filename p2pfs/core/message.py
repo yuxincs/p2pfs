@@ -52,7 +52,7 @@ async def write_message(writer, message):
     # json string (str) -> encode to utf8 (bytes) -> compress (bytes) -> add length header (bytes)
     raw_msg = json.dumps(message).encode('utf-8')
     compressed = _compressor.compress(raw_msg)
-    logger.debug('Compressed rate: {}'.format(len(compressed) / len(raw_msg)))
+    logger.debug('Compression rate: {}'.format(len(compressed) / len(raw_msg)))
     compressed = struct.pack('>I', len(compressed)) + compressed
     writer.write(compressed)
     await writer.drain()
