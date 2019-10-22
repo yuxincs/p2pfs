@@ -2,7 +2,7 @@ import pytest
 import os
 import asyncio
 import hashlib
-import uvloop
+import sys
 from p2pfs import Tracker, Peer
 
 TEST_SMALL_FILE = 'test_small_file'
@@ -36,7 +36,10 @@ async def setup_tracker_and_peers(peer_num, tracker_port):
 
 @pytest.fixture(scope='session', autouse=True)
 def create_test_files(request):
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    # only use uvloop on non-windows platform
+    if sys.platform != 'windows':
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     with open(TEST_SMALL_FILE, 'wb') as fout:
         fout.write(os.urandom(1000))
 
