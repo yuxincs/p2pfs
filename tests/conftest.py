@@ -37,7 +37,7 @@ async def setup_tracker_and_peers(peer_num, tracker_port):
 @pytest.fixture(scope='session', autouse=True)
 def create_test_files(request):
     # only use uvloop on non-windows platform
-    if sys.platform != 'windows':
+    if sys.platform != 'win32':
         import uvloop
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     with open(TEST_SMALL_FILE, 'wb') as fout:
