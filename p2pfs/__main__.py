@@ -10,7 +10,7 @@ from p2pfs.ui.terminal import TrackerTerminal, PeerTerminal
 coloredlogs.install(level='ERROR', fmt='%(levelname)s:%(module)s: %(message)s')
 
 # uvloop does not work on windows, so we will use default loop 
-if sys.platform != 'windows':
+if sys.platform != 'win32':
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
