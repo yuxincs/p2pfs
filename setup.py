@@ -11,7 +11,7 @@ setup(
     description='Simple File System based on P2P concept',
     long_description=long_description,
     url='',
-    author='Ryan (Yuxin) Wang/Zeyu Ding',
+    author='Yuxin Wang/Zeyu Ding',
     author_email='ryanwang.cs@gmail.com,dxd437@psu.edu',
     license='MIT',
     classifiers=[
@@ -25,7 +25,8 @@ setup(
     ],
     keywords='P2P, Networking',
     packages=find_packages(exclude=['tests']),
-    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'beautifultable', 'tqdm', 'uvloop', 'aioconsole'],
+    install_requires=['pybase64', 'zstandard', 'coloredlogs', 'beautifultable', 'tqdm', 'aioconsole'
+                      'uvloop ; platform_system != "Windows"'],
     extras_require={
         'test': ['pytest', 'pytest-asyncio', 'pytest-cov', 'coverage'],
     },
