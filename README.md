@@ -1,5 +1,5 @@
 # p2pfs
-[![Build Status](https://travis-ci.com/yxwangcs/p2pfs.svg?token=6D8zTzZr7SPui6PzhT2a&branch=master)](https://travis-ci.com/yxwangcs/p2pfs) [![codecov](https://codecov.io/gh/yxwangcs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yxwangcs/p2pfs)
+[![Github Actions](https://github.com/yxwangcs/p2pfs/workflows/build/badge.svg)](https://github.com/yxwangcs/p2pfs/actions?workflow=build) [![codecov](https://codecov.io/gh/yxwangcs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yxwangcs/p2pfs)
 
 <p align="center">
   <img src="https://yxwangcs.github.io/p2pfs/demo.svg" width="80%"/>
