@@ -3,6 +3,7 @@ import logging
 import asyncio
 import struct
 import pbjson
+import msgpack
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ async def read_message(reader):
     msglen = struct.unpack('>I', raw_msg_len)[0]
     raw_msg = await reader.readexactly(msglen)
 
-    msg = pbjson.loads(raw_msg)
+    msg = msgpack.loads(raw_msg)
     logger.debug('Message received {}'.format(_message_log(msg)))
     return msg
 
@@ -47,7 +48,7 @@ async def write_message(writer, message):
     if isinstance(message['type'], MessageType):
         message['type'] = message['type'].value
     # pbjson string (bytes) -> add length header (bytes)
-    raw_msg = pbjson.dumps(message)
+    raw_msg = msgpack.dumps(message)
     raw_msg = struct.pack('>I', len(raw_msg)) + raw_msg
     writer.write(raw_msg)
     await writer.drain()
