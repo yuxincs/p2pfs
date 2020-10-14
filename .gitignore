@@ -49,3 +49,6 @@ runo.py
 
 # pytest cache
 .pytest_cache
+
+# test file
+*.test
