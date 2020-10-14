@@ -5,7 +5,6 @@ import json
 import time
 import hashlib
 import asyncio
-import pybase64
 from p2pfs.core.message import MessageType, read_message, write_message
 from p2pfs.core.server import MessageServer
 from p2pfs.core.exceptions import *
@@ -187,10 +186,9 @@ class DownloadManager:
                     message = finished_task.result()
 
                     number, data, digest = message['chunknum'], message['data'], message['digest']
-                    raw_data = pybase64.b64decode(data.encode('utf-8'), validate=True)
 
                     # ask for re-transmission if data is corrupted
-                    if Peer._HASH_FUNC(raw_data).hexdigest() != digest:
+                    if Peer._HASH_FUNC(data).hexdigest() != digest:
                         await write_message(writer, {
                             'type': MessageType.PEER_REQUEST_CHUNK,
                             'filename': self._filename,
@@ -215,7 +213,7 @@ class DownloadManager:
                         # stop querying tracker
                         pass
                     
-                    yield number, raw_data
+                    yield number, data
 
                     # send out request chunk
                     if len(self._to_download_chunk) > 0:
@@ -440,7 +438,7 @@ class Peer(MessageServer):
                         'type': MessageType.PEER_REPLY_CHUNK,
                         'filename': message['filename'],
                         'chunknum': message['chunknum'],
-                        'data': pybase64.b64encode(raw_data).decode('utf-8'),
+                        'data': raw_data,
                         'digest': Peer._HASH_FUNC(raw_data).hexdigest()
                     })
                 elif message_type == MessageType.PEER_PING_PONG:
