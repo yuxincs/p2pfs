@@ -31,7 +31,7 @@ def _message_log(message):
 
 async def read_message(reader):
     assert isinstance(reader, asyncio.StreamReader)
-    # receive length header -> pbjson load (dict)
+    # receive length header -> msgpack load (dict)
     raw_msg_len = await reader.readexactly(4)
     msglen = struct.unpack('>I', raw_msg_len)[0]
     raw_msg = await reader.readexactly(msglen)
@@ -47,7 +47,7 @@ async def write_message(writer, message):
     # use value of enum since Enum is not JSON serializable
     if isinstance(message['type'], MessageType):
         message['type'] = message['type'].value
-    # pbjson string (bytes) -> add length header (bytes)
+    # msgpack (bytes) -> add length header (bytes)
     raw_msg = msgpack.dumps(message)
     raw_msg = struct.pack('>I', len(raw_msg)) + raw_msg
     writer.write(raw_msg)
