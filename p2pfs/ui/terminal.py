@@ -37,12 +37,12 @@ class TrackerTerminal(aiocmd.Cmd):
     async def do_list_files(self, arg):
         file_list_dict = self._tracker.file_list()
         table = BeautifulTable()
-        table.row_separator_char = ''
+        table.rows.separator = ''
 
         for filename, fileinfo in file_list_dict.items():
-            if table.column_count == 0:
-                table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-            table.append_row((filename, ) + tuple(fileinfo.values()))
+            if len(table.columns) == 0:
+                table.columns.header = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+            table.rows.append((filename, ) + tuple(fileinfo.values()))
         _, std_writer = await get_standard_streams()
         std_writer.write(str(table).encode('utf-8'))
         std_writer.write('\n'.encode('utf-8'))
@@ -50,10 +50,10 @@ class TrackerTerminal(aiocmd.Cmd):
 
     async def do_list_peers(self, arg):
         table = BeautifulTable()
-        table.row_separator_char = ''
-        table.column_headers = ['Peer Address']
+        table.rows.separator = ''
+        table.columns.header = ['Peer Address']
         for peer in self._tracker.peers():
-            table.append_row([peer])
+            table.rows.append([peer])
         _, std_writer = await get_standard_streams()
         std_writer.write(str(table).encode('utf-8'))
         std_writer.write('\n'.encode('utf-8'))
@@ -130,12 +130,12 @@ class PeerTerminal(aiocmd.Cmd):
                   'try \'connect <tracker_ip> <tracker_port>\' to re-connect.')
         else:
             table = BeautifulTable()
-            table.row_separator_char = ''
+            table.rows.separator = ''
 
             for filename, fileinfo in file_list_dict.items():
-                if table.column_count == 0:
-                    table.column_headers = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
-                table.append_row((filename,) + tuple(fileinfo.values()))
+                if len(table.columns) == 0:
+                    table.columns.header = ['Filename'] + list(map(lambda x: x.capitalize(), tuple(fileinfo.keys())))
+                table.rows.append((filename,) + tuple(fileinfo.values()))
             print(table)
 
     async def do_download(self, arg):
