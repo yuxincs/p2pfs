@@ -2,7 +2,6 @@ from enum import Enum, auto
 import logging
 import asyncio
 import struct
-import pbjson
 import msgpack
 
 logger = logging.getLogger(__name__)
