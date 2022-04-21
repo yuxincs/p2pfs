@@ -1,8 +1,8 @@
 # p2pfs
-[![Github Actions](https://github.com/yxwangcs/p2pfs/workflows/build/badge.svg)](https://github.com/yxwangcs/p2pfs/actions?workflow=build) [![codecov](https://codecov.io/gh/yxwangcs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yxwangcs/p2pfs)
+[![Github Actions](https://github.com/yuxincs/p2pfs/workflows/build/badge.svg)](https://github.com/yuxincs/p2pfs/actions?workflow=build) [![codecov](https://codecov.io/gh/yuxincs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yuxincs/p2pfs)
 
 <p align="center">
-  <img src="https://yxwangcs.github.io/p2pfs/demo.svg" width="85%"/>
+  <img src="https://github.com/yuxincs/p2pfs/raw/master/demo.svg" width="85%"/>
 </p>
 
 File System based on P2P.
@@ -111,4 +111,4 @@ Peer reads the chunk of the file and sends it back.
 Peer sends back the exact message.
 
 ## License
-[MIT](https://github.com/yxwangcs/p2pfs/blob/master/LICENSE).
+[MIT](https://github.com/yuxincs/p2pfs/blob/master/LICENSE).
