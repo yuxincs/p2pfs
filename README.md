@@ -2,7 +2,7 @@
 [![Github Actions](https://github.com/yuxincs/p2pfs/workflows/build/badge.svg)](https://github.com/yuxincs/p2pfs/actions?workflow=build) [![codecov](https://codecov.io/gh/yuxincs/p2pfs/branch/master/graph/badge.svg?token=EDGIegqh8K)](https://codecov.io/gh/yuxincs/p2pfs)
 
 <p align="center">
-  <img src="https://github.com/yuxincs/p2pfs/raw/master/demo.svg" width="85%"/>
+  <img src="https://github.com/yuxincs/p2pfs/raw/main/demo.svg" width="85%"/>
 </p>
 
 File System based on P2P.
